@@ -5,8 +5,9 @@ from .darts import Darts
 from .detnas import DetNAS
 from .general_distill import GeneralDistill
 from .spos import SPOS
+from .common_pruning import CommonPruningAlgoritm
 
 __all__ = [
     'AutoSlim', 'AlignMethodDistill', 'Darts', 'SPOS', 'DetNAS',
-    'GeneralDistill'
+    'GeneralDistill','CommonPruningAlgoritm'
 ]

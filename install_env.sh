@@ -7,7 +7,7 @@ conda activate wyh_create
 conda install pytorch torchvision torchaudio cudatoolkit=11.6 -c pytorch -c conda-forge
 # install opencv
 # install mmcv-full
-pip install mmcv-full
+pip install mmcv-full==1.6.0
 pip install mmcls
 pip install mmsegmentation
 pip install mmdet
