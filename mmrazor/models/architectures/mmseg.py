@@ -9,3 +9,7 @@ class MMSegArchitecture(BaseArchitecture):
 
     def __init__(self, **kwargs):
         super(MMSegArchitecture, self).__init__(**kwargs)
+    def cal_pseudo_loss(self, pseudo_img):
+        """ Used for executing ``forward`` with pseudo_img """
+        out=pseudo_img.sum()
+        return out
