@@ -99,7 +99,7 @@ class CKAEvolutionSearcher():
                 assert METRICS.__contains__(self.m), f"Input Metric {m} not in metrics list:{METRICS.keys()}. \
                      Total input metrics are {self.metric_options}"
 
-    def generate_hook(self,name,fdict:dict,fpool:dict=None):
+    def generate_hook(self,name,fdict:dict,fpool:dict|None=None):
         def output_hook(module,input,output) -> None:
             fdict[name]=output.detach()
             if fpool:

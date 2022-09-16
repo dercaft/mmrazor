@@ -21,7 +21,7 @@ model = dict(
     ))
 
 algorithm = dict(
-    type='CommonPruningAlgorithm',
+    type='CommonPruningAlgoritm',
     architecture=dict(type='MMClsArchitecture', model=model),
     distiller=None,
     pruner=dict(

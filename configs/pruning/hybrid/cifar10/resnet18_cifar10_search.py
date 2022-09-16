@@ -21,12 +21,11 @@ model=dict(
     )
 )
 algorithm=dict(
-    type='CommonPruningAlgorithm',
+    type='CommonPruningAlgoritm',
     architecture=dict(type='MMClsArchitecture', model=model),
     distiller=None,
     pruner=dict(type='CommonPruner'),
     retraining=False,
-    bn_training_mode=False,
     input_shape=(3,32,32),
 )
 runner=dict(type='EpochBasedRunner',max_epochs=1)

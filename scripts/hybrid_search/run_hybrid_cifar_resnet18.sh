@@ -9,8 +9,10 @@ CONFIG=${root}/configs/pruning/hybrid/cifar10/resnet18_cifar10_search.py
 CHECKPOINT=${root}/checkpoints/
 #
 function=$1
-
+echo $PYTHONPATH
+export PYTHONPATH=${root}
 date=`date +%m%d_%s`
+date=${$date:0-6}
 fullfilename=$(basename $0)
 filename=${fullfilename%.*}
 
