@@ -35,15 +35,15 @@ searcher=dict(
     type='CKAEvolutionSearcher',
     reduction_ratio=0.5,
     metrics='accuracy',
-    candidate_pool_size=100,
+    candidate_pool_size=200,
     max_epoch=10,
     rand_seed=0,
     metric='CDP',
     metric_options=["L1","FPGM","HRANK","APOZ"],
 )
 data=dict(
-    samples_per_gpu=128, 
-    workers_per_gpu=4,
+    samples_per_gpu=96, 
+    workers_per_gpu=8,
     train=dict(
         data_prefix='/data/imagenet/train',
         ),

@@ -84,7 +84,7 @@ data=dict(
 # One-shot 剪枝
 bash tests/simple_pruning/run_test_mmcls.sh
 # Hybrid-search
-bash scripts/hybrid_search/run_hybrid_cifar_resnet18.sh test_search_geatpy_topk
+bash scripts/hybrid_search/run_hybrid_cifar_resnet18.sh test_search_geatpy_discrete_inference
 # Fusion
 bash tests/simple_fusion/run_fusion_mmcls.sh
 # bash scripts/fusion_merge/run_fusion_cifar_resnet18.sh test_fusion_init
@@ -115,9 +115,9 @@ CUDA_VISIBLE_DEVICES=2,3 NCCL_DEBUG=INFO MKL_NUM_THREADS=1 bash tests/simple_pru
 ```shell
 
 # Cifar 搜索+训练
-bash scripts/hybrid_search/run_hybrid_cifar_resnet18.sh test_search_geatpy_topk
+bash scripts/hybrid_search/run_hybrid_cifar_resnet18.sh test_search_geatpy_discrete_inference
 # ImageNet 搜索+训练
-bash scripts/hybrid_search/run_hybrid_cifar_resnet18.sh test_search_geatpy_topk
+bash scripts/hybrid_search/run_hybrid_cifar_resnet18.sh test_search_geatpy_discrete_inference
 # 训练 单卡
 bash scripts/hybrid_search/run_hybrid_in1k_resnet18_train.sh 0 <json_file_path\> <GPU_number>
 

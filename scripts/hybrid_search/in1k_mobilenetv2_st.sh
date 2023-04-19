@@ -3,10 +3,10 @@
 set -x
 local=$(dirname "$0") # file directory path
 root=$(dirname $(dirname $local)) # project path
-GPU_NUM=2
+GPU_NUM=3
 # 需要指定路径
-CONFIG=${root}/configs/pruning/hybrid/imagenet/resnet18_in1k_search.py
-CHECKPOINT=${root}/checkpoints/resnet18_8xb32_in1k_20210831-fbbb1da6.pth
+CONFIG=${root}/configs/pruning/hybrid/imagenet/mobilenetv2_search.py
+CHECKPOINT=${root}/checkpoints/mobilenet_v2_batch256_imagenet_20200708-3b2dc3af.pth
 # 
 function=test_search_geatpy_discrete_inference
 echo $PYTHONPATH

@@ -1,7 +1,8 @@
 _base_ = [
-    '../../../_base_/datasets/mmcls/imagenet_bs256_autoslim.py',
-    '../../../_base_/schedules/mmcls/imagenet_bs2048_autoslim.py',
-    '../../../_base_/mmcls_runtime.py'
+    '../../../_base_/models/mobilenet_v2_1x.py',
+    '../../../_base_/datasets/imagenet_bs32_pil_resize.py',
+    '../../../_base_/schedules/imagenet_bs256_epochstep.py',
+    '../../../_base_/default_runtime.py'
 ]
 
 model = dict(
@@ -38,12 +39,27 @@ use_ddp_wrapper = True
 # use_ddp_wrapper=True
 searcher=dict(
     type='CKAEvolutionSearcher',
-    reduction_ratio=0.9,
+    reduction_ratio=0.5,
     metrics='accuracy',
-    candidate_pool_size=50,
+    candidate_pool_size=100,
     max_epoch=20,
     rand_seed=0,
     metric='FPGM',
     metric_options=[],
 )
-data=dict(samples_per_gpu=64, workers_per_gpu=4)
+data=dict(
+    samples_per_gpu=100, 
+    workers_per_gpu=8,
+    train=dict(
+        data_prefix='/data/imagenet/train',
+        ),
+    val=dict(
+        data_prefix='/data/imagenet/val',
+        ann_file=None,
+        ),
+    test=dict(
+        # replace `data/val` with `data/test` for standard test
+        data_prefix='/data/imagenet/val',
+        ann_file=None,
+        )
+    )
