@@ -1,5 +1,5 @@
 # Copyright (c) OpenMMLab. All rights reserved.
-import os.path as osp
+import os
 import random
 import time
 import torch
@@ -808,10 +808,13 @@ class CKAEvolutionSearcher():
         file_dict=[]
         # for i in range(optPop.Phen.shape[1]):
         #     print(optPop.Phen[0, i], end='\t')
- 
-        for i,(cka,Vs) in enumerate(zip(res['lastPop'].ObjV, res['lastPop'].Phen)):
+        print("optPop:")
+        for i,(cka,Vs) in enumerate(zip(res['optPop'].ObjV, res['optPop'].Phen)):
             print(i,"\tObjV: ", cka,"\tPhen: ", Vs)
-        for i,(cka,Vs) in enumerate(zip(res['lastPop'].ObjV, res['lastPop'].Phen)):
+
+        # for i,(cka,Vs) in enumerate(zip(res['lastPop'].ObjV, res['lastPop'].Phen)):
+        #     print(i,"\tObjV: ", cka,"\tPhen: ", Vs)
+        for i,(cka,Vs) in enumerate(zip(res['optPop'].ObjV, res['optPop'].Phen)):
             space2ratio={s:int(r) for s,r in zip(space_list,Vs)}
             subnet_dict=pruner.sample_subnet_nonuni(space2ratio)
             subnet_dict.update(remove_subdict)
@@ -822,7 +825,7 @@ class CKAEvolutionSearcher():
                 'space2ratio':space2ratio,
                 'cka':cka,
             })
-        mmcv.dump(file_dict,"./test.json","json")
+        mmcv.dump(file_dict,os.path.join(self.work_dir,"opt.json") ,"json")
 
 
     def test_search_geatpy_discrete_inference_hybrid(self):

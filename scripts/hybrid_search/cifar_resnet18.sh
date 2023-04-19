@@ -11,8 +11,8 @@ CHECKPOINT=${root}/checkpoints/resnet18_b16x8_cifar10_20210528-bd6371c8.pth
 function=$1
 echo $PYTHONPATH
 export PYTHONPATH=${root}
-date=`date +%m%d_%s`
-date=${${date}:0-6}
+date=`date +%y%m%d_%H%M%S`
+
 fullfilename=$(basename $0)
 filename=${fullfilename%.*}
 

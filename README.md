@@ -48,6 +48,35 @@ pruner.set_subnet(subnet_dict) # set net to pruned status
 
 **Algorithm控制的部分**
 
+## 迁移后需要修改的内容：
+
+Pretrained model path https://github.com/open-mmlab/mmpretrain/tree/main/configs/resnet
+主要是各种路径
+
+### 数据集路径
+ImageNet 1k 路径
+```python
+data=dict(
+    samples_per_gpu=1024, 
+    workers_per_gpu=16,
+    train=dict(
+        data_prefix='/data/imagenet/train',
+        ),
+    val=dict(
+        data_prefix='/data/imagenet/val',
+        ann_file=None,
+        ),
+    test=dict(
+        # replace `data/val` with `data/test` for standard test
+        data_prefix='/data/imagenet/val',
+        ann_file=None,
+        )
+    )
+```
+### 模型Checkpoint路径
+
+### log存储路径
+
 ## 运行命令
 在当前项目路径下： 
 示例命令  
@@ -59,6 +88,7 @@ bash scripts/hybrid_search/run_hybrid_cifar_resnet18.sh test_search_geatpy_topk
 # Fusion
 bash tests/simple_fusion/run_fusion_mmcls.sh
 # bash scripts/fusion_merge/run_fusion_cifar_resnet18.sh test_fusion_init
+# ImageNet推理
 
 ```
 可以加速sklearn的Intel CPU 计算
@@ -72,11 +102,26 @@ CDP
 CUDA_VISIBLE_DEVICES=2,3 NCCL_DEBUG=INFO MKL_NUM_THREADS=1 bash tests/simple_pruning/dist_train.sh
 
 # CDP 可视化参数
-
     bash tests/simple_pruning/CDP/visual_cdp_score_resnet18.sh
+
 
 ```
 
+**搜索剪枝**
+2023.04.19
+
+搜索json结果保存到和checkpoint一致的路径中去。
+
+```shell
+
+# Cifar 搜索+训练
+bash scripts/hybrid_search/run_hybrid_cifar_resnet18.sh test_search_geatpy_topk
+# ImageNet 搜索+训练
+bash scripts/hybrid_search/run_hybrid_cifar_resnet18.sh test_search_geatpy_topk
+# 训练 单卡
+bash scripts/hybrid_search/run_hybrid_in1k_resnet18_train.sh 0 <json_file_path\> <GPU_number>
+
+```
 
 ## 开发环境
 work_dirs地址: 203服务器 /data/work_dirs/wyh
