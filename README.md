@@ -1,13 +1,112 @@
 #  项目记录
-## 项目文件结构
-``` shell
+基于MMRazor 版本创建
+## 项目开发
+调用层级：
+Scripts -> Main Python + Config -> Algorithm -> Pruner -> Metric
+
+- Scripts: 脚本入口，用于调用Main Python，控制一些超参数和路径，如数据集路径、模型路径、日志路径等
+- Main Python: 项目入口，包含加载数据集、模型、优化器、损失函数等，
+- Config: 配置文件
+- Algorithm: 算法入口，进行流程控制，比如迭代式剪枝、蒸馏中的迭代训练控制以及全局剪枝
+- Pruner: 剪枝器，进行剪枝操作、MASK管理
+- Metric: 评价指标，用于剪枝和蒸馏中的评价指标计算
+
+若要添加新算法，按上述动作层级创建文件进行开发
+关于输出,使用: logger
+```python 
+    from mmcls.utils import get_root_logger
+    # ...
+    logger=get_root_logger(log_level='INFO')
+    # ...
+    logger.info(f'INFO: checkpoints contains keys: {checkpoint.keys()}')
 
 ```
+## 项目文件结构
+``` shell
+```
+### 关于Pruner
+
+channel_pruning
+``` python
+ratio # Global pruning ratio
+contents={'layer_name':(weight/features)}
+metric_scores=pruner.get_metric_local(metric_name,contents)
+subnet_dict=pruner.sample_subnet_uniform(ratio,metric_scores) # uniform pruning
+subnet_dict=pruner.sample_subnet_diff(ratio,metric_scores) # non-uniform pruning with global comparison
+ratios= XXX
+subnet_dict=pruner.sample_subnet_nonuni(ratios,metric_scores) # non-uniform pruning with denoted ratio
+
+pruner.set_subnet(subnet_dict) # set net to pruned status
+```
+
+**Pruner控制的部分**
+
+- 建立整个模型的结构图
+- 根据Algo传入的Metric排序,产生out_mask
+  - channel_space: 记录每组共享out_mask的层
+- set_subnet: 设置剪枝后网络
+
+**Algorithm控制的部分**
+
+## 运行命令
+在当前项目路径下： 
+示例命令  
+```bash
+# One-shot 剪枝
+bash tests/simple_pruning/run_test_mmcls.sh
+# Hybrid-search
+bash scripts/hybrid_search/run_hybrid_cifar_resnet18.sh test_search_geatpy_topk
+# Fusion
+bash tests/simple_fusion/run_fusion_mmcls.sh
+# bash scripts/fusion_merge/run_fusion_cifar_resnet18.sh test_fusion_init
+
+```
+可以加速sklearn的Intel CPU 计算
+        $ conda install scikit-learn-intelex
+        $ python -m sklearnex my_application.py
+
+**普通剪枝**
+
+CDP
+```shell
+CUDA_VISIBLE_DEVICES=2,3 NCCL_DEBUG=INFO MKL_NUM_THREADS=1 bash tests/simple_pruning/dist_train.sh
+
+# CDP 可视化参数
+
+    bash tests/simple_pruning/CDP/visual_cdp_score_resnet18.sh
+
+```
+
+
+## 开发环境
+work_dirs地址: 203服务器 /data/work_dirs/wyh
+``` bash
+
+conda activate wyh_graduate
+
+```
+安装新python包时，尽量使用pip
+
+## 可以做的实验：
+1. 学习率 step cosine
+2. 优化器 SGD Adam
+3. 模型内部结构
+## 添加权重融合模块
+Pytorch 官方实现的conv+bn权重融合
+https://github.com/pytorch/pytorch/blob/master/torch/nn/utils/fusion.py
+## 添加模型层剪枝模块
+
 ## 记录疑问与问题
+### train/val代码写在哪个模块里？
+*回答*：有可能Algorithm和Searcher两个都有。
+- AutoSlim: 因为流程是：先训练，再搜索。所以模型训练代码写Algorithm里，Searcher有一些val的
+- Hybrid： 因为流程是：先搜索，再训练。所以模型训练代码写在Algorithm里，Searcher有一些val的。.提取特征的代码写在了Searcher里。
+- Fusion: 2.25流程是：先根据特征图/权重计算层重要性，所以是模型训练代码写在Algorithm里，提取特征的代码写在Algorithm里
+
 ### Question
 ``` shell
 config.py:
-    resume_from
+    resume_from 9
     load_from
 <main>.py:
     checkpoint
@@ -30,7 +129,7 @@ File "/home/wyh/wuyuhang/mmrazor/mmrazor/models/pruners/structure_pruning.py", l
 ``` shell
 AttributeError: AutoSlim: 'NoneType' object has no attribute 'next_functions'
 ```
-## 代办事项
+## 待办事项
 
 1. mmseg config&checkpoint
 2. mmcls resnet/mobilenetv2 checkpoint

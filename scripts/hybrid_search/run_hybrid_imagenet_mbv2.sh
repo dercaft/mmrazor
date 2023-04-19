@@ -20,5 +20,5 @@ filename=${fullfilename%.*}
 python ${root}/tools/mmcls/search_model.py \
     ${CONFIG} \
     --checkpoint_model ${CHECKPOINT} \
-    --work-dir ${root}/work_dirs/${filename}_${date} \
+    --work-dir /data/work_dirs/wyh/hybrid/${filename}_${date} \
     --search_function ${function} \

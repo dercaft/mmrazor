@@ -1,9 +1,10 @@
 # Byte-compiled / optimized / DLL files
+.github/
 __pycache__/
 *.py[cod]
 *$py.class
 **/*.pyc
-
+.github/
 # C extensions
 *.so
 

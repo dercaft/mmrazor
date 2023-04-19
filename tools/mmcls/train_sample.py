@@ -180,16 +180,29 @@ def main():
     # Difference from mmclassification
     # replace `model` to `algorithm`
     # Adder load ckpt file
+    space2ratio=None
     if args.model_file_path and os.path.isfile(args.model_file_path):
         channel_cfgs=mmcv.load(args.model_file_path,'json')
         assert args.model_index >=0
         ccfg=channel_cfgs[args.model_index]
-        cfg.algorithm.channel_cfg=ccfg
+        if isinstance(ccfg,dict) and ccfg.get("channel_cfg"):
+            cfg.algorithm.channel_cfg=ccfg["channel_cfg"]
+        else:
+            cfg.algorithm.channel_cfg=ccfg
+        if isinstance(ccfg,dict) and ccfg.get("space2ratio"):
+            space2ratio=ccfg["space2ratio"]
         cfg.algorithm.retraining=False
-    
+        logger.info(f'CKA:\n{ccfg["cka"]}')
+
     algorithm = build_algorithm(cfg.algorithm)
     algorithm.init_weights()
-
+    # Adder
+    if space2ratio:
+        logger.info(f'Use space2ratio')
+        algorithm.compress_space2ratio(space2ratio)
+    else:
+        logger.info(f'Use channel_cfg')
+        algorithm.compress_channel_cfg(cfg.algorithm.channel_cfg)
     # 需要实现一个从ccfg转换成subnet_dict样式的函数，因为deploy_subnet不管用
 
     datasets = [build_dataset(cfg.data.train)]

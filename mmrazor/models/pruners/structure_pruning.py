@@ -17,8 +17,9 @@ from mmrazor.models.builder import PRUNERS
 from .utils import SwitchableBatchNorm2d
 
 # These grad_fn pattern are flags of specific a nn.Module
-CONV = ('ThnnConv2DBackward', 'CudnnConvolutionBackward',
-        'MkldnnConvolutionBackward')
+
+CONV = ('ConvolutionBackward','SlowConv2DBackward','ThnnConv2DBackward', 'CudnnConvolutionBackward',
+        'MkldnnConvolutionBackward','SlowConvDilated2DBackward')
 FC = ('ThAddmmBackward', 'AddmmBackward', 'MmBackward')
 BN = ('ThnnBatchNormBackward', 'CudnnBatchNormBackward',
       'NativeBatchNormBackward')
@@ -66,7 +67,6 @@ def register_parser(parser_dict, name=None, force=False):
         return parser_func
 
     return _register
-
 
 @PRUNERS.register_module()
 class StructurePruner(BaseModule, metaclass=ABCMeta):
@@ -746,7 +746,8 @@ class StructurePruner(BaseModule, metaclass=ABCMeta):
         for name, parser in BACKWARD_PARSER_DICT.items():
             if type(grad_fn).__name__.startswith(name):
                 return parser
-
+    @register_parser(BACKWARD_PARSER_DICT, 'ConvolutionBackward')
+    @register_parser(BACKWARD_PARSER_DICT, 'SlowConv2DBackward')
     @register_parser(BACKWARD_PARSER_DICT, 'ThnnConv2DBackward')
     @register_parser(BACKWARD_PARSER_DICT, 'CudnnConvolutionBackward')
     @register_parser(BACKWARD_PARSER_DICT, 'MkldnnConvolutionBackward')

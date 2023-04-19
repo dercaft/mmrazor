@@ -1,8 +1,8 @@
 _base_=[
-    '../../../_base_/datasets/mmcls/cifar10_bs16.py',
-    '../../../_base_/schedules/mmcls/cifar10_bs128.py',
-    '../../../_base_/mmcls_runtime.py',
-]
+ '../../../_base_/datasets/cifar10_bs16.py',
+    '../../../_base_/schedules/cifar10_bs128.py',
+    '../../../_base_/default_runtime.py']
+
 model=dict(
     type='mmcls.ImageClassifier',
     backbone=dict(
@@ -21,10 +21,10 @@ model=dict(
     )
 )
 algorithm=dict(
-    type='CommonPruningAlgoritm',
+    type='ChannelPruningAlgoritm',
     architecture=dict(type='MMClsArchitecture', model=model),
     distiller=None,
-    pruner=dict(type='CommonPruner'),
+    pruner=dict(type='ChannelPruner'),
     retraining=False,
     input_shape=(3,32,32),
 )
@@ -32,12 +32,12 @@ runner=dict(type='EpochBasedRunner',max_epochs=1)
 # use_ddp_wrapper=True
 searcher=dict(
     type='CKAEvolutionSearcher',
-    reduction_ratio=0.9,
+    reduction_ratio=0.7,
     metrics='accuracy',
-    candidate_pool_size=50,
-    max_epoch=20,
+    candidate_pool_size=100,
+    max_epoch=10,
     rand_seed=0,
-    metric='FPGM',
-    metric_options=[],
+    metric='CDP',
+    metric_options=["L1","FPGM","HRANK","APOZ"],
 )
 data=dict(samples_per_gpu=128, workers_per_gpu=4)

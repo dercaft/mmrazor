@@ -34,7 +34,8 @@ def parse_args():
     parser.add_argument('--checkpoint', help='checkpoint file of algorithm')
     # Adder
     parser.add_argument('--checkpoint_model', help='checkpoint file of model')
-    parser.add_argument('--search_function',type=str,default='', help='checkpoint file of model')
+    parser.add_argument('--search_function',type=str,default='', help='name of search function')
+        # reference at 
     # 
     parser.add_argument(
         '--work-dir',
@@ -140,7 +141,7 @@ def main():
     if fp16_cfg is not None:
         wrap_fp16_model(model)
     # Adder
-    if len(args.checkpoint):
+    if args.checkpoint and len(args.checkpoint):
         checkpoint = load_checkpoint(
             algorithm, args.checkpoint, map_location='cpu')
     elif len(args.checkpoint_model):
@@ -184,6 +185,6 @@ def main():
     logger.info('start search...')
     search_function=getattr(searcher,args.search_function,None)
     assert search_function,"WARNING: Search is None"
-
+    search_function()
 if __name__ == '__main__':
     main()

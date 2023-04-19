@@ -49,7 +49,8 @@ def center_gram(gram, unbiased=False):
   """
     if not torch.allclose(gram, gram.T):
         raise ValueError('Itorchut must be a symmetric matrix.')
-    gram = gram.copy()
+    # gram = gram.copy()
+    gram = gram.clone().detach()
 
     if unbiased:
         # This formulation of the U-statistic, from Szekely, G. J., & Rizzo, M.

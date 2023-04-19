@@ -5,9 +5,19 @@ from .darts import Darts
 from .detnas import DetNAS
 from .general_distill import GeneralDistill
 from .spos import SPOS
-from .common_pruning import CommonPruningAlgoritm
-
-__all__ = [
-    'AutoSlim', 'AlignMethodDistill', 'Darts', 'SPOS', 'DetNAS',
-    'GeneralDistill','CommonPruningAlgoritm'
+from .channel_pruning import ChannelPruningAlgoritm
+from .fusion_pruning import FusionPruningAlgoritm
+NAS = [
+    'Darts', 'SPOS', 'DetNAS'
 ]
+PRUNE = [
+    'AutoSlim','ChannelPruningAlgoritm','FusionPruningAlgoritm'
+]
+MERGE = [
+    
+]
+DISTILL = [
+    'GeneralDistill','AlignMethodDistill'
+]
+ALL_LIST=NAS + PRUNE + MERGE + DISTILL
+__all__ = ['Darts', 'SPOS', 'DetNAS', 'AutoSlim', 'ChannelPruningAlgoritm', 'FusionPruningAlgoritm', 'GeneralDistill', 'AlignMethodDistill']

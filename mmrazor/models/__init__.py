@@ -23,7 +23,7 @@ from .mutables import *  # noqa: F401,F403
 from .mutators import *  # noqa: F401,F403
 from .ops import *  # noqa: F401,F403
 from .pruners import *  # noqa: F401,F403
-
+from .merger import *
 if mmdet is not None:
     from mmdet.models import *  # noqa: F401,F403
 if mmseg is not None:

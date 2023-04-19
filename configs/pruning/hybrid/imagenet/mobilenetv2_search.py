@@ -21,11 +21,11 @@ model = dict(
     ))
 
 algorithm = dict(
-    type='CommonPruningAlgoritm',
+    type='ChannelPruningAlgoritm',
     architecture=dict(type='MMClsArchitecture', model=model),
     distiller=None,
     pruner=dict(
-        type='CommonPruner',
+        type='ChannelPruner',
         ),
     retraining=False,
     # bn_training_mode=True,
