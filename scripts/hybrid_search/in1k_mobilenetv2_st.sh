@@ -3,7 +3,7 @@
 set -x
 local=$(dirname "$0") # file directory path
 root=$(dirname $(dirname $local)) # project path
-GPU_NUM=3
+GPU_NUM=$1
 # 需要指定路径
 CONFIG=${root}/configs/pruning/hybrid/imagenet/mobilenetv2_search.py
 CHECKPOINT=${root}/checkpoints/mobilenet_v2_batch256_imagenet_20200708-3b2dc3af.pth

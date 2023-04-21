@@ -45,7 +45,7 @@ data=dict(
     samples_per_gpu=96, 
     workers_per_gpu=8,
     train=dict(
-        data_prefix='/data/imagenet/train',
+        data_prefix='/data/imagenet/ILSVRC2012_img_train',
         ),
     val=dict(
         data_prefix='/data/imagenet/val',

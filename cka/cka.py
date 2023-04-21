@@ -178,8 +178,8 @@ def feature_space_linear_cka(features_x, features_y, debiased=False):
   if debiased:
     n = features_x.shape[0]
     # Equivalent to torch.sum(features_x ** 2, 1) but avoids an intermediate array.
-    sum_squared_rows_x = torch.einsum('ij,ij->i', features_x, features_x)
-    sum_squared_rows_y = torch.einsum('ij,ij->i', features_y, features_y)
+    sum_squared_rows_x = torch.sum(features_x ** 2, 1)
+    sum_squared_rows_y = torch.sum(features_y ** 2, 1)
     squared_norm_x = torch.sum(sum_squared_rows_x)
     squared_norm_y = torch.sum(sum_squared_rows_y)
 

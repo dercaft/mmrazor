@@ -7,12 +7,12 @@ _base_ = [
 
 model = dict(
     type='mmcls.ImageClassifier',
-    backbone=dict(type='MobileNetV2', widen_factor=1.5),
+    backbone=dict(type='MobileNetV2', widen_factor=1.0),
     neck=dict(type='GlobalAveragePooling'),
     head=dict(
         type='LinearClsHead',
         num_classes=1000,
-        in_channels=1920,
+        in_channels=1280,
         loss=dict(
             type='LabelSmoothLoss',
             mode='original',
@@ -51,7 +51,7 @@ data=dict(
     samples_per_gpu=100, 
     workers_per_gpu=8,
     train=dict(
-        data_prefix='/data/imagenet/train',
+        data_prefix='/data/imagenet/ILSVRC2012_img_train',
         ),
     val=dict(
         data_prefix='/data/imagenet/val',

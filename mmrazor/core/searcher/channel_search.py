@@ -8,7 +8,8 @@ from collections import OrderedDict
 import numpy as np
 import mmcv.fileio
 from mmcv.runner import get_dist_info
-
+# import mmcls.models.backbones.resnet_cifar
+# import mmcls.models.backbones.resnet
 from ..builder import SEARCHERS
 from ..utils import broadcast_object_list
 from ...models.algorithms.utils import extract_features
@@ -196,14 +197,15 @@ class CKAEvolutionSearcher():
                         supf=supf.view(supf.size(0),-1)
                         subf=self.features_dict[n][:,:k] # 直接取前k个通道
                         subf=subf.view(subf.size(0),-1)
-                        sum_sim+=cka_t(gram_t(supf),gram_t(subf))
+                        sum_sim+=cka_t(gram_t(supf.cuda()),gram_t(subf.cuda()))
                 f0=0 if iszero else sum_sim.data.cpu()
                 f.append(f0)
                 # MOD-start 计算FLOPS
                 if not iszero:
                     space2ratio={s:r for s,r in zip(space_list,Vs) }
                     sub_dict=pruner.sample_subnet_nonuni(space2ratio)
-                    sub_dict.update(remove_subdict)
+                    if remove_subdict is not None:
+                        sub_dict.update(remove_subdict)
                     pruner.set_subnet(sub_dict)
                     flops=self.algorithm.get_subnet_flops()
                     rflops=self.algorithm.get_supnet_flops()
@@ -289,7 +291,7 @@ class CKAEvolutionSearcher():
                         subf=self.features_dict[n][:,:cout_num]
                         supf=supf.view(supf.size(0),-1)
                         subf=subf.view(subf.size(0),-1)
-                        sum_sim+=cka_t(gram_t(supf),gram_t(subf))
+                        sum_sim+=cka_t(gram_t(supf.cuda()),gram_t(subf.cuda()))
                 f.append(sum_sim.data.cpu())
                 # 计算FLOPS
                 space2ratio={}
@@ -298,7 +300,8 @@ class CKAEvolutionSearcher():
                     # space2ratio[s]=cn/self.features_dict[n].size(1)+1e-6 #这里多加一个小数，为了数值稳定
                     space2ratio[s]=int(cn)
                 sub_dict=pruner.sample_subnet_nonuni(space2ratio)
-                sub_dict.update(remove_subdict)
+                if remove_subdict is not None:
+                    sub_dict.update(remove_subdict)
                 pruner.set_subnet(sub_dict)
                 flops=self.algorithm.get_subnet_flops()
                 rflops=self.algorithm.get_supnet_flops()
@@ -401,7 +404,7 @@ class CKAEvolutionSearcher():
                         subf=self.features_dict[n].index_select(1,ind) # 第1维，ind下标的通道(N,C,H,W)
                         supf=supf.view(supf.size(0),-1)
                         subf=subf.view(subf.size(0),-1)
-                        sum_sim+=cka_t(gram_t(supf),gram_t(subf))
+                        sum_sim+=cka_t(gram_t(supf.cuda()),gram_t(subf.cuda()))
                 f.append(sum_sim.data.cpu())
                 # 计算FLOPS
                 space2ratio={}
@@ -410,7 +413,8 @@ class CKAEvolutionSearcher():
                     # space2ratio[s]=cn/self.features_dict[n].size(1)+1e-6 #这里多加一个小数，为了数值稳定
                     space2ratio[s]=int(cn)
                 sub_dict=pruner.sample_subnet_nonuni(space2ratio)
-                sub_dict.update(remove_subdict)
+                if remove_subdict is not None:
+                    sub_dict.update(remove_subdict)
                 pruner.set_subnet(sub_dict)
                 flops=self.algorithm.get_subnet_flops()
                 rflops=self.algorithm.get_supnet_flops()
@@ -523,7 +527,7 @@ class CKAEvolutionSearcher():
                         subf=self.features_dict[n].index_select(1,ind) # 第1维，ind下标的通道(N,C,H,W)
                         supf=supf.view(supf.size(0),-1)
                         subf=subf.view(subf.size(0),-1)
-                        sum_sim+=cka_t(gram_t(supf),gram_t(subf))
+                        sum_sim+=cka_t(gram_t(supf.cuda()),gram_t(subf.cuda()))
                 f.append(sum_sim.data.cpu())
                 # 计算FLOPS
                 space2ratio={}
@@ -532,7 +536,8 @@ class CKAEvolutionSearcher():
                     # space2ratio[s]=cn/self.features_dict[n].size(1)+1e-6 #这里多加一个小数，为了数值稳定
                     space2ratio[s]=int(cn)
                 sub_dict=pruner.sample_subnet_nonuni(space2ratio)
-                sub_dict.update(remove_subdict)
+                if remove_subdict is not None:
+                    sub_dict.update(remove_subdict)
                 pruner.set_subnet(sub_dict)
                 flops=self.algorithm.get_subnet_flops()
                 rflops=self.algorithm.get_supnet_flops()
@@ -639,7 +644,7 @@ class CKAEvolutionSearcher():
                         subf=self.features_dict[n].index_select(1,ind) # 第1维，ind下标的通道(N,C,H,W)
                         supf=supf.view(supf.size(0),-1)
                         subf=subf.view(subf.size(0),-1)
-                        sum_sim+=cka_t(gram_t(supf),gram_t(subf))
+                        sum_sim+=cka_t(gram_t(supf.cuda()),gram_t(subf.cuda()))
                 f.append(sum_sim.data.cpu())
                 # 计算FLOPS
                 space2ratio={}
@@ -648,7 +653,8 @@ class CKAEvolutionSearcher():
                     # space2ratio[s]=cn/self.features_dict[n].size(1)+1e-6 #这里多加一个小数，为了数值稳定
                     space2ratio[s]=int(cn)
                 sub_dict=pruner.sample_subnet_nonuni(space2ratio)
-                sub_dict.update(remove_subdict)
+                if remove_subdict is not None:
+                    sub_dict.update(remove_subdict)
                 pruner.set_subnet(sub_dict)
                 flops=self.algorithm.get_subnet_flops()
                 rflops=self.algorithm.get_supnet_flops()
@@ -724,6 +730,7 @@ class CKAEvolutionSearcher():
         self.logger.info('#' * 100)
 
         # self.features_dict={}
+        remove_subdict=None
         remove_subdict=self.algorithm.pruner.remove_denoted_group(['downsample'])
         space2names,self.features_dict,_=self.extract_features(self.algorithm_for_test,self.dataloader)
         supernet=self.algorithm.architecture
@@ -742,7 +749,8 @@ class CKAEvolutionSearcher():
                     # space2ratio[s]=cn/self.features_dict[n].size(1)+1e-6 #这里多加一个小数，为了数值稳定
                     space2ratio[s]=int(cn)
                 sub_dict=pruner.sample_subnet_nonuni(space2ratio)
-                sub_dict.update(remove_subdict)
+                if remove_subdict is not None:
+                    sub_dict.update(remove_subdict)
                 pruner.set_subnet(sub_dict)
                 flops=self.algorithm.get_subnet_flops()
                 rflops=self.algorithm.get_supnet_flops()
@@ -759,7 +767,7 @@ class CKAEvolutionSearcher():
                         subf=features_dict[n]
                         supf=supf.view(supf.size(0),-1)
                         subf=subf.view(subf.size(0),-1)
-                        sum_sim+=cka_t(gram_t(supf),gram_t(subf))
+                        sum_sim+=cka_t(gram_t(supf.cuda()),gram_t(subf.cuda()))
                 f.append(sum_sim.data.cpu())
 
             return np.array([f]).T, np.array([cv]).T
@@ -814,16 +822,30 @@ class CKAEvolutionSearcher():
 
         # for i,(cka,Vs) in enumerate(zip(res['lastPop'].ObjV, res['lastPop'].Phen)):
         #     print(i,"\tObjV: ", cka,"\tPhen: ", Vs)
+
         for i,(cka,Vs) in enumerate(zip(res['optPop'].ObjV, res['optPop'].Phen)):
             space2ratio={s:int(r) for s,r in zip(space_list,Vs)}
             subnet_dict=pruner.sample_subnet_nonuni(space2ratio)
-            subnet_dict.update(remove_subdict)
+            if remove_subdict is not None:
+                subnet_dict.update(remove_subdict)
             pruner.set_subnet(subnet_dict)
+            flops=self.algorithm.get_subnet_flops()
+            rflops=self.algorithm.get_supnet_flops()
+            reduction_rate=(rflops-flops)/rflops
+            # if is tensor, convert to list
+            if isinstance(cka,torch.Tensor):
+                cka=cka.tolist()
+            if isinstance(reduction_rate,torch.Tensor):
+                reduction_rate=reduction_rate.tolist()
+            if isinstance(flops,torch.Tensor):
+                flops=flops.tolist()
             chls=pruner.export_subnet()
             file_dict.append({
                 'channel_cfg':chls,
                 'space2ratio':space2ratio,
                 'cka':cka,
+                'reduction_rate':reduction_rate,
+                'flops':flops,
             })
         mmcv.dump(file_dict,os.path.join(self.work_dir,"opt.json") ,"json")
 
@@ -890,7 +912,8 @@ class CKAEvolutionSearcher():
                     space2ratio[s]=int(cn)
                 
                 sub_dict=pruner.sample_subnet_nonuni(space2ratio)
-                sub_dict.update(remove_subdict)
+                if remove_subdict is not None:
+                    sub_dict.update(remove_subdict)
                 pruner.set_subnet(sub_dict)
                 flops=self.algorithm.get_subnet_flops()
                 rflops=self.algorithm.get_supnet_flops()
@@ -907,7 +930,7 @@ class CKAEvolutionSearcher():
                         subf=features_dict[n]
                         supf=supf.view(supf.size(0),-1)
                         subf=subf.view(subf.size(0),-1)
-                        sum_sim+=cka_t(gram_t(supf),gram_t(subf))
+                        sum_sim+=cka_t(gram_t(supf.cuda()),gram_t(subf.cuda()))
                 f.append(sum_sim.data.cpu())
 
             return np.array([f]).T, np.array([cv]).T
@@ -990,6 +1013,6 @@ class CKAEvolutionSearcher():
 
                 supf=supf.view(supf.size(0),-1)
                 subf=subf.view(subf.size(0),-1)
-                sum_sim+=cka_t(gram_t(supf),gram_t(subf))
+                sum_sim+=cka_t(gram_t(supf.cuda()),gram_t(subf.cuda()))
             print(f"{i}th model cka is :{sum_sim}")
     

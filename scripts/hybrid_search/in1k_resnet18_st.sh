@@ -3,7 +3,7 @@
 set -x
 local=$(dirname "$0") # file directory path
 root=$(dirname $(dirname $local)) # project path
-GPU_NUM=2
+GPU_NUM=$1
 # 需要指定路径
 CONFIG=${root}/configs/pruning/hybrid/imagenet/resnet18_in1k_search.py
 CHECKPOINT=${root}/checkpoints/resnet18_8xb32_in1k_20210831-fbbb1da6.pth

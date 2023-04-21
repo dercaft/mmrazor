@@ -50,8 +50,40 @@ pruner.set_subnet(subnet_dict) # set net to pruned status
 
 ## 迁移后需要修改的内容：
 
+ResNet_Cifar 
+
+mmcls.models.backbones.resnet_cifar
+```python
+    def __init__(self, depth, deep_stem=False, **kwargs):
+        if depth in [20, 32, 44, 56, 110, 1202]:
+            kwargs['stem_channels'] = 16
+            kwargs['base_channels'] = 16
+            kwargs['avg_down'] = True # optional
+            kwargs['out_indices'] = (2,)
+        super(ResNet_CIFAR, self).__init__(
+            depth, deep_stem=deep_stem, **kwargs)
+        assert not self.deep_stem, 'ResNet_CIFAR do not support deep_stem'
+```
+mmcls.models.backbones.resnet
+```python
+    arch_settings = {
+        18: (BasicBlock, (2, 2, 2, 2)),
+        34: (BasicBlock, (3, 4, 6, 3)),
+        50: (Bottleneck, (3, 4, 6, 3)),
+        101: (Bottleneck, (3, 4, 23, 3)),
+        152: (Bottleneck, (3, 8, 36, 3)),
+        20: (BasicBlock, [3, 3, 3]),
+        32: (BasicBlock, [5, 5, 5]),
+        44: (BasicBlock, [7, 7, 7]),
+        56: (BasicBlock, [9, 9, 9]),
+        110: (BasicBlock, [18, 18, 18]),
+        1202: (BasicBlock, [200, 200, 200])
+    }
+```
+<!-- /home/xxxy/miniconda3/envs/wyh_graduate/lib/python3.10/site-packages/mmcls/models/backbones/resnet.py -->
+https://github.com/open-mmlab/mmpretrain/issues/801
+
 Pretrained model path https://github.com/open-mmlab/mmpretrain/tree/main/configs/resnet
-主要是各种路径
 
 ### 数据集路径
 ImageNet 1k 路径
@@ -60,7 +92,7 @@ data=dict(
     samples_per_gpu=1024, 
     workers_per_gpu=16,
     train=dict(
-        data_prefix='/data/imagenet/train',
+        data_prefix='/data/imagenet/ILSVRC2012_img_train',
         ),
     val=dict(
         data_prefix='/data/imagenet/val',

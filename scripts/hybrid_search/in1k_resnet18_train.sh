@@ -9,7 +9,7 @@ fullfilename=$(basename $0)
 filename=${fullfilename%.*}
 # 以上为每个具体训练的脚本应有的共同开头
 # 需要指定路径
-CONFIG=${root}/configs/pruning/hybrid/imagenet/resnet18_in1k_search.py
+CONFIG=${root}/configs/pruning/hybrid/imagenet/resnet18_in1k_train.py
 CHECKPOINT=${root}/checkpoints/resnet18_8xb32_in1k_20210831-fbbb1da6.pth
 # json文件的路径
 MODEL_FILE_PATH=$2

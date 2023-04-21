@@ -32,7 +32,7 @@ runner=dict(type='EpochBasedRunner',max_epochs=1)
 # use_ddp_wrapper=True
 searcher=dict(
     type='CKAEvolutionSearcher',
-    reduction_ratio=0.7,
+    reduction_ratio=0.5,
     metrics='accuracy',
     candidate_pool_size=100,
     max_epoch=10,
