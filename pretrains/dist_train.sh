@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 CONFIG=$1
-GPUS=2
+GPUS=1
 NNODES=${NNODES:-1}
 NODE_RANK=${NODE_RANK:-0}
 PORT=${PORT:-29500}
@@ -12,7 +12,7 @@ fullfilename=$(basename $0)
 filename=${fullfilename%.*}
 
 PYTHONPATH="$(dirname $0)/..":$PYTHONPATH \
-CUDA_VISIBLE_DEVICES=2,3 python -m torch.distributed.launch \
+CUDA_VISIBLE_DEVICES=1 python -m torch.distributed.launch \
     --nnodes=$NNODES \
     --node_rank=$NODE_RANK \
     --master_addr=$MASTER_ADDR \

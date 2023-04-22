@@ -6,7 +6,7 @@ root=$(dirname $(dirname $local)) # project path
 
 # 需要指定路径
 CONFIG=${root}/configs/pruning/hybrid/imagenet/mobilenetv2_search.py
-CHECKPOINT=${root}/checkpoints/
+CHECKPOINT=${root}/checkpoints/mobilenet_v2_batch256_imagenet_20200708-3b2dc3af.pth
 #
 function=$1
 echo $PYTHONPATH
@@ -14,11 +14,10 @@ export PYTHONPATH=${root}
 
 date=`date +%y%m%d_%H%M%S`
 
-date=${$date:0-6}
 fullfilename=$(basename $0)
 filename=${fullfilename%.*}
 
-python ${root}/tools/mmcls/search_model.py \
+CUDA_VISIBLE_DEVICES=1 python ${root}/tools/mmcls/search_model.py \
     ${CONFIG} \
     --checkpoint_model ${CHECKPOINT} \
     --work-dir /data/work_dirs/wyh/hybrid/${filename}_${date} \

@@ -20,15 +20,16 @@ model = dict(
         loss=dict(type='CrossEntropyLoss', loss_weight=1.0),
     ))
 # learning policy
-lr_config = dict(
-    _delete_=True,
-    policy='CosineAnnealing',
-    min_lr=0,
-    warmup='linear',
-    warmup_iters=10,
-    warmup_ratio=0.5)
+# lr_config = dict(
+#     _delete_=True,
+#     policy='CosineAnnealing',
+#     min_lr=0,
+#     warmup='linear',
+#     warmup_iters=10,
+#     warmup_ratio=0.5)
 # lr_config = dict(policy='step', step=[100, 150,])
-# lr_config = dict(policy='step', step=[60, 120, 160], gamma=0.2)
-runner=dict(type='EpochBasedRunner', max_epochs=600)
+lr_config = dict(policy='step', step=[60, 120, 160], gamma=0.2)
+runner=dict(type='EpochBasedRunner', max_epochs=200)
 # data=dict(samples_per_gpu=4096, workers_per_gpu=8)
 data=dict(samples_per_gpu=8192, workers_per_gpu=8)
+auto_scale_lr = dict(base_batch_size=128)
