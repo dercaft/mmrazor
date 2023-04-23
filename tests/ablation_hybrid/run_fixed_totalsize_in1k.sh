@@ -10,7 +10,7 @@ root=$(dirname $(dirname $local)) # project path
 CONFIG=${root}/configs/pruning/hybrid/imagenet/mobilenetv2_search.py
 CHECKPOINT=${root}/checkpoints/mobilenet_v2_batch256_imagenet_20200708-3b2dc3af.pth
 #
-function=$1
+function=test_search_geatpy_discrete_inference
 echo $PYTHONPATH
 export PYTHONPATH=${root}
 date=`date +%y%m%d_%H%M%S`

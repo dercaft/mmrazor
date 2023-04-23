@@ -8,7 +8,7 @@ root=$(dirname $(dirname $local)) # project path
 CONFIG=${root}/configs/pruning/hybrid/imagenet/resnet18_in1k_search.py
 CHECKPOINT=${root}/checkpoints/resnet18_8xb32_in1k_20210831-fbbb1da6.pth
 # 
-function=$1
+function=test_search_geatpy_discrete_inference
 echo $PYTHONPATH
 export PYTHONPATH=${root}
 date=`date +%y%m%d_%H%M%S`
@@ -16,7 +16,7 @@ date=`date +%y%m%d_%H%M%S`
 fullfilename=$(basename $0)
 filename=${fullfilename%.*}
 
-CUDA_VISIBLE_DEVICES=$2 python ${root}/tools/mmcls/search_model.py \
+CUDA_VISIBLE_DEVICES=$1 python ${root}/tools/mmcls/search_model.py \
     ${CONFIG} \
     --checkpoint_model ${CHECKPOINT} \
     --work-dir /data/work_dirs/wyh/hybrid/${filename}_${date} \

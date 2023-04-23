@@ -8,7 +8,7 @@ root=$(dirname $(dirname $local)) # project path
 CONFIG=${root}/configs/pruning/fusion/cifar10/resnet18_cifar10_fusion.py
 CHECKPOINT=${root}/checkpoints/resnet18_b16x8_cifar10_20210528-bd6371c8.pth
 #
-function=$1
+function=test_search_geatpy_discrete_inference
 echo $PYTHONPATH
 export PYTHONPATH=${root}
 date=`date +%y%m%d_%H%M%S`

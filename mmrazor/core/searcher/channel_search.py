@@ -245,7 +245,7 @@ class CKAEvolutionSearcher():
 
         # self.features_dict={}
         remove_subdict=None
-        remove_subdict=self.algorithm.pruner.remove_denoted_group(['downsample'])
+        # remove_subdict=self.algorithm.pruner.remove_denoted_group(['downsample'])
         # space2names,self.features_dict,_=self.extract_features(self.algorithm_for_test,self.dataloader)
         supernet=self.algorithm.architecture
         supernet_infer = MMDataParallel(

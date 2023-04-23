@@ -8,7 +8,7 @@ root=$(dirname $(dirname $local)) # project path
 CONFIG=${root}/configs/pruning/hybrid/imagenet/resnet18_in1k_search.py
 CHECKPOINT=${root}/checkpoints/resnet18_8xb32_in1k_20210831-fbbb1da6.pth
 #
-function=$1
+function=test_search_geatpy_discrete_inference
 echo $PYTHONPATH
 export PYTHONPATH=${root}
 date=`date +%y%m%d_%H%M%S`
