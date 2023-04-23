@@ -16,7 +16,7 @@ date=`date +%y%m%d_%H%M%S`
 fullfilename=$(basename $0)
 filename=${fullfilename%.*}
 
-python ${root}/tools/mmcls/search_model.py \
+CUDA_VISIBLE_DEVICES=$2 python ${root}/tools/mmcls/search_model.py \
     ${CONFIG} \
     --checkpoint_model ${CHECKPOINT} \
     --work-dir /data/work_dirs/wyh/hybrid/${filename}_${date} \
