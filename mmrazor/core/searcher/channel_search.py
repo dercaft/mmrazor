@@ -278,18 +278,37 @@ class CKAEvolutionSearcher():
 
                 _, features_dict,_ =extract_features(supernet_infer,supernet,pruner,self.dataloader)
                 # 计算 sim cka
-                iszero,sum_sim=False,0
+                sum_sim=torch.DoubleTensor([0],device='cpu').to(device).squeeze()
                 assert len(Vs)==len(space_list)
                 for space,cout_num in zip(space_list,Vs):
+                    ib=False
                     for n in space2names[space]:
                         supf=self.features_dict[n]
                         subf=features_dict[n]
-                        supf=supf.view(supf.size(0),-1)
-                        subf=subf.view(subf.size(0),-1)
-                        sum_sim+=cka_t(gram_t(supf),gram_t(subf))
-                f.append(sum_sim.data.cpu())
+                        if supf.mean().item()==0 or subf.mean().item()==0:
+                            sum_sim=torch.DoubleTensor([0],device='cpu').to(device).squeeze()
+                            ib=True
+                            break
+                        else:
+                            supf=supf.view(supf.size(0),-1)
+                            subf=subf.view(subf.size(0),-1)
+                            sim=cka_t(gram_t(supf),gram_t(subf))
+                            sum_sim+=sim
+                            # if sim is nan,print infors about subf and supf
+                            # if torch.isnan(sim):
+                            #     print(f"sim is nan,subf:{subf.shape},supf:{supf.shape}")
+                            #     print(f"subf mean var:{subf.mean().item()},{subf.var().item()}")
+                            #     print(f"supf mean var:{supf.mean().item()},{supf.var().item()}")
+                            #     print(f"subf max and min:",subf.max().item(),subf.min().item())
+                            #     print(f"supf max and min:",supf.max().item(),supf.min().item())
+                    if ib: break
+                f.append(sum_sim.data.cpu().numpy())
+                # f+=sum_sim.data.cpu().numpy()
                 # features_dict.clear()
                 del features_dict
+            # print("Info: ",len(f))
+            # print("f: ",f)
+            # print("cv: ",cv)
             return np.array([f]).T, np.array([cv]).T
 
         upperbound=[]
