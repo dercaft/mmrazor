@@ -28,5 +28,5 @@ CUDA_VISIBLE_DEVICES=$3 python ${root}/tools/mmcls/train_sample.py \
     --work-dir /data/work_dirs/wyh/hybrid_train/${filename}_${date} \
     --model_index ${MODEL_INDEX} \
     --model_file_path ${MODEL_FILE_PATH} \
-    --seed 0
-    
+    --seed 0 \
+    --cfg-options optimizer.lr=1\

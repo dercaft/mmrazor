@@ -20,6 +20,7 @@ test_pipeline = [
 data = dict(
     samples_per_gpu=16,
     workers_per_gpu=2,
+    pin_memory=True,
     train=dict(
         type=dataset_type, data_prefix='data/cifar10',
         pipeline=train_pipeline),

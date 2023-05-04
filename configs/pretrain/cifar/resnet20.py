@@ -25,11 +25,20 @@ model = dict(
 #     policy='CosineAnnealing',
 #     min_lr=0,
 #     warmup='linear',
-#     warmup_iters=10,
+#     warmup_iters=1,
 #     warmup_ratio=0.5)
 # lr_config = dict(policy='step', step=[100, 150,])
-lr_config = dict(policy='step', step=[60, 120, 160], gamma=0.2)
+log_config = dict(
+    interval=100,
+    hooks=[
+        dict(type='TextLoggerHook'),
+        dict(type='TensorboardLoggerHook')
+    ])
+optimizer = dict(type='SGD', lr=1, momentum=0.9, weight_decay=0.0001)
+lr_config = dict(policy='step', step=[15, 30, 60, 120, 160], gamma=0.1)
 runner=dict(type='EpochBasedRunner', max_epochs=200)
 # data=dict(samples_per_gpu=4096, workers_per_gpu=8)
-data=dict(samples_per_gpu=8192, workers_per_gpu=8)
+data=dict(samples_per_gpu=8192, workers_per_gpu=8, pin_memory=True, persistent_workers=True)
+# optimizer = dict(type='SGD', lr=0.1, momentum=0.9, weight_decay=0.0001)
+
 auto_scale_lr = dict(base_batch_size=128)

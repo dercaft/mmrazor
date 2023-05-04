@@ -1,7 +1,10 @@
 import os
 import sys
 
-DIR_PATH="/data/work_dirs/wyh/cifar10_sample"
+# Use first argument as dir path
+DIR_PATH=sys.argv[1]
+
+# DIR_PATH="/data/work_dirs/wyh/cifar10_sample"
 # list all dirs in DIR_PATH
 dirs = os.listdir(DIR_PATH)
 # traverse all dirs
@@ -15,6 +18,8 @@ for dir in dirs:
     for file in files:
         if file.endswith(".log"):
             name=file
+    if name == "":
+        continue
     with open(os.path.join(DIR_PATH, dir, name), "r") as f:
         lines = f.readlines()
         jump=True

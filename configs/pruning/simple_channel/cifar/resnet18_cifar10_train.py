@@ -24,5 +24,5 @@ algorithm=dict(
 )
 runner=dict(type='EpochBasedRunner', max_epochs=600)
 # use_ddp_wrapper=True
-data=dict(samples_per_gpu=2048, workers_per_gpu=8) # 3090Ti
+# data=dict(samples_per_gpu=2048, workers_per_gpu=8) # 3090Ti
 evaluation=dict(interval=1, metric='accuracy', save_best='accuracy_top-1')

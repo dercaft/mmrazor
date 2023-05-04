@@ -42,7 +42,7 @@ searcher=dict(
     metric_options=["L1","FPGM","HRANK","APOZ"],
 )
 data=dict(
-    samples_per_gpu=96, 
+    samples_per_gpu=72, 
     workers_per_gpu=8,
     train=dict(
         data_prefix='/data/imagenet/ILSVRC2012_img_train',
