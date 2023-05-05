@@ -7,15 +7,16 @@ model=dict(
     type='mmcls.ImageClassifier',
     backbone=dict(
         type='ResNet_CIFAR',
-        depth=56,
+        depth=18,
         num_stages=4,
-        out_indices=(3, ),
-        style='pytorch'),
+        out_indices=(3,),
+        style='pytorch',
+    ),
     neck=dict(type='GlobalAveragePooling'),
     head=dict(
         type='LinearClsHead',
         num_classes=10,
-        in_channels=64,
+        in_channels=512,
         loss=dict(type='CrossEntropyLoss', loss_weight=1.0),
     )
 )
@@ -27,7 +28,6 @@ algorithm=dict(
     retraining=False,
     input_shape=(3,32,32),
 )
-# runner=dict(type='EpochBasedRunner',max_epochs=1)
 # use_ddp_wrapper=True
 searcher=dict(
     type='CKAEvolutionSearcher',

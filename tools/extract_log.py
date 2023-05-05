@@ -3,12 +3,14 @@ import sys
 
 # Use first argument as dir path
 DIR_PATH=sys.argv[1]
-
+PREFIX=sys.argv[2]
 # DIR_PATH="/data/work_dirs/wyh/cifar10_sample"
 # list all dirs in DIR_PATH
 dirs = os.listdir(DIR_PATH)
 # traverse all dirs
 for dir in dirs:
+    if not dir.startswith(PREFIX):
+        continue
     # list all files in dir
     files = os.listdir(os.path.join(DIR_PATH, dir))
     # traverse all files
@@ -37,4 +39,5 @@ for dir in dirs:
                 lacc=float(line.split(" ")[-4])
                 if lacc>acc:
                     acc=lacc
-    print("{cka},\t{acc}".format(cka=cka, acc=acc))
+        num=dir.split("_")[-1]
+        print("{num},\t{cka},\t{acc}".format(num=num,cka=cka, acc=acc))
