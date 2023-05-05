@@ -29,6 +29,6 @@ lr_config = dict(
 # lr_config = dict(policy='step', step=[60, 120, 160], gamma=0.2)
 runner=dict(type='EpochBasedRunner', max_epochs=200)
 # use_ddp_wrapper=True
-data=dict(samples_per_gpu=96, workers_per_gpu=8)
+# data=dict(samples_per_gpu=96, workers_per_gpu=8)
 # data=dict(samples_per_gpu=2048, workers_per_gpu=8)
 evaluation=dict(interval=1, metric='accuracy', save_best='accuracy_top-1')

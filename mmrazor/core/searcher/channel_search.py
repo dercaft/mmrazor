@@ -413,7 +413,8 @@ class CKAEvolutionSearcher():
         self.logger.info('#' * 100)
 
         # self.features_dict={}
-        remove_subdict=self.algorithm.pruner.remove_denoted_group(['downsample'])
+        remove_subdict=None
+        # remove_subdict=self.algorithm.pruner.remove_denoted_group(['downsample'])
         space2names,self.features_dict,_=self.extract_features(self.algorithm_for_test,self.dataloader)
         supernet=self.algorithm.architecture
         pruner=self.algorithm.pruner

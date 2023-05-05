@@ -9,7 +9,7 @@ model = dict(
     type='mmcls.ImageClassifier',
     backbone=dict(
         type='ResNet',
-        depth=50,
+        depth=34,
         num_stages=4,
         out_indices=(3, ),
         style='pytorch'),
@@ -17,11 +17,10 @@ model = dict(
     head=dict(
         type='LinearClsHead',
         num_classes=1000,
-        in_channels=2048,
+        in_channels=512,
         loss=dict(type='CrossEntropyLoss', loss_weight=1.0),
         topk=(1, 5),
     ))
-
 algorithm=dict(
     type='ChannelPruningAlgoritm',
     architecture=dict(type='MMClsArchitecture', model=model),
@@ -43,8 +42,7 @@ searcher=dict(
     metric_options=["L1","FPGM","HRANK","APOZ"],
 )
 data=dict(
-    samples_per_gpu=72, 
-    workers_per_gpu=8,
+    workers_per_gpu=16,
     train=dict(
         data_prefix='/data/imagenet/ILSVRC2012_img_train',
         ),
