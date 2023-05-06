@@ -33,7 +33,7 @@ algorithm=dict(
 runner=dict(type='EpochBasedRunner',max_epochs=1)
 # use_ddp_wrapper=True
 data=dict(
-    samples_per_gpu=1024, 
+    # samples_per_gpu=1024, 
     workers_per_gpu=16,
     train=dict(
         data_prefix='/data/imagenet/ILSVRC2012_img_train',

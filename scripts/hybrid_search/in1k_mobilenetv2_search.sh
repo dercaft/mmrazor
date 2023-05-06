@@ -22,3 +22,6 @@ CUDA_VISIBLE_DEVICES=$1 python ${root}/tools/mmcls/search_model.py \
     --checkpoint_model ${CHECKPOINT} \
     --work-dir /data/work_dirs/wyh/hybrid/${filename}_${date} \
     --search_function ${function} \
+
+# # scp transfer file from server 10.24.82.199
+# scp -r 

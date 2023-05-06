@@ -6,7 +6,7 @@ _base_ = [
 # model settings
 model = dict(
     type='ImageClassifier',
-    backbone=dict(type='VGG', depth=16, num_classes=10),
+    backbone=dict(type='VGG', depth=11, num_classes=10),
     neck=None,
     head=dict(
         type='ClsHead',

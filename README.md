@@ -152,8 +152,20 @@ bash scripts/hybrid_search/run_hybrid_cifar_resnet18.sh test_search_geatpy_discr
 bash scripts/hybrid_search/run_hybrid_cifar_resnet18.sh test_search_geatpy_discrete_inference
 # 训练 单卡
 bash scripts/hybrid_search/run_hybrid_in1k_resnet18_train.sh 0 <json_file_path\> <GPU_number>
-
+# 使用timm进行训练
+# 首先根据搜索得到的opt.json生成子模型
 ```
+2023.5.5
+
+MobileNetV2 搜索结果路径
+
+- 50% Reduction Ratio: 
+- 70% Reduction Ratio:
+
+ResNet50 搜索结果路径
+
+- 50% Reduction Ratio: 
+- 70% Reduction Ratio:
 
 ## 开发环境
 work_dirs地址: 203服务器 /data/work_dirs/wyh

@@ -174,11 +174,15 @@ class ChannelPruningAlgoritm(BaseAlgorithm):
         subnet_dict=self.pruner.sample_subnet_nonuni(space2ratio)
         self.pruner.set_subnet(subnet_dict)
         pass
-
+    def comprss_deploy(self,space2ratio=None):
+        subnet_dict=self.pruner.sample_subnet_nonuni(space2ratio)
+        self.pruner.deploy_subnet(self.architecture, subnet_dict)
+        return self.architecture
     def test_score_compress(self, reduction_ratio,**kwargs):
         import json
         import os
-        remove_subdict=self.pruner.remove_denoted_group(['downsample'])
+        remove_subdict={}
+        # remove_subdict=self.pruner.remove_denoted_group(['downsample'])
         ratio=1-reduction_ratio
         dataloader =  kwargs.get("dataloader",None)
         metric_name=self.pruner.pruning_metric_name
