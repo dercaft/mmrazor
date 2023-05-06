@@ -34,9 +34,16 @@ for dir in dirs:
         for i,line in enumerate(lines):
             if "INFO - CKA:" in line:
                 cka=float(lines[i+1].strip("[").strip("\n").strip("]"))
-            if "Best accuracy_top-1" in line:
+            sub="accuracy_top-1:"
+            if sub in line:
                 # 2023-03-15 21:39:49,123 - mmcls - INFO - Best accuracy_top-1 is 89.8800 at 108 epoch.
-                lacc=float(line.split(" ")[-4])
+                ind=line.find(sub)
+                try:
+                    lacc=float(line[ind:].split()[1].strip(" ").strip(","))
+                except:
+                    print(line[ind:])
+                    lacc=0
+                # lacc=float(line.split(" ")[-4])
                 if lacc>acc:
                     acc=lacc
         num=dir.split("_")[-1]
