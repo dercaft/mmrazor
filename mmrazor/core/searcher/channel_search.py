@@ -553,4 +553,795 @@ class CKAEvolutionSearcher():
                 subf=subf.view(subf.size(0),-1)
                 sum_sim+=cka_t(gram_t(supf.cuda()),gram_t(subf.cuda()))
             print(f"{i}th model cka is :{sum_sim}")
-    
+
+    def test_search_discrete_inference_scaler(self,device='cuda:0'):
+        # MOD-start initial&log
+        """Execute the pipeline of evolution search."""
+        epoch_start = 0
+        if self.resume_from is not None:
+            searcher_resume = mmcv.fileio.load(self.resume_from)
+            for k in searcher_resume.keys():
+                setattr(self, k, searcher_resume[k])
+            epoch_start = int(searcher_resume['epoch'])
+            self.logger.info('#' * 100)
+            self.logger.info(f'Resume from epoch: {epoch_start}')
+            self.logger.info('#' * 100)
+        self.logger.info('Experiment setting:')
+        self.logger.info(f'candidate_pool_size: {self.candidate_pool_size}')
+        # self.logger.info(f'candidate_top_k: {self.candidate_top_k}')
+        # self.logger.info(f'num_crossover: {self.num_crossover}')
+        # self.logger.info(f'num_mutation: {self.num_mutation}')
+        # self.logger.info(f'mutate_prob: {self.mutate_prob}')
+        self.logger.info(f'max_epoch: {self.max_epoch}')
+        # self.logger.info(f'score_key: {self.score_key}')
+        # self.logger.info(f'constraints: {self.constraints}')
+        self.logger.info(f'reduction ratio: {self.reduction_ratio}')
+        self.logger.info('#' * 100)
+
+        # self.features_dict={}
+        remove_subdict=None
+        # remove_subdict=self.algorithm.pruner.remove_denoted_group(['downsample'])
+        # space2names,self.features_dict,_=self.extract_features(self.algorithm_for_test,self.dataloader)
+        supernet=self.algorithm.architecture
+        supernet_infer = MMDataParallel(
+            supernet.to(device), device_ids=[0])
+        
+        pruner=self.algorithm.pruner
+        space2names,self.features_dict,_=extract_features(supernet_infer, supernet,pruner,self.dataloader)
+
+        name2space={n:k for k,v in space2names.items() for n in v}
+        space_list=list(space2names.keys())
+        # MOD-end
+        # MOD-start evalVars
+        def evalVars(Vars):
+            f,cv=[],[]
+            for Vs in Vars:
+                # 计算FLOPS
+                space2ratio={}
+                for s,cn in zip(space_list,Vs):
+                    n=space2names[s][0]
+                    # space2ratio[s]=cn/self.features_dict[n].size(1)+1e-6 #这里多加一个小数，为了数值稳定
+                    space2ratio[s]=int(cn)
+                sub_dict=pruner.sample_subnet_nonuni(space2ratio)
+                if remove_subdict is not None:
+                    sub_dict.update(remove_subdict)
+                pruner.set_subnet(sub_dict)
+                flops=self.algorithm.get_subnet_flops()
+                rflops=self.algorithm.get_supnet_flops()
+                reduction_rate=(rflops-flops)/rflops
+                cv.append(self.reduction_ratio- reduction_rate)
+
+                _, features_dict,_ =extract_features(supernet_infer,supernet,pruner,self.dataloader)
+                # 计算 sim cka
+                sum_sim=torch.DoubleTensor([0],device='cpu').to(device).squeeze()
+                assert len(Vs)==len(space_list)
+                for space,cout_num in zip(space_list,Vs):
+                    ib=False
+                    for n in space2names[space]:
+                        supf=self.features_dict[n]
+                        subf=features_dict[n]
+                        if supf.mean().item()==0 or subf.mean().item()==0:
+                            sum_sim=torch.DoubleTensor([0],device='cpu').to(device).squeeze()
+                            ib=True
+                            break
+                        else:
+                            supf=supf.view(supf.size(0),-1)
+                            subf=subf.view(subf.size(0),-1)
+                            sim=cka_t(gram_t(supf),gram_t(subf))
+                            sum_sim+=sim
+                            # if sim is nan,print infors about subf and supf
+                            # if torch.isnan(sim):
+                            #     print(f"sim is nan,subf:{subf.shape},supf:{supf.shape}")
+                            #     print(f"subf mean var:{subf.mean().item()},{subf.var().item()}")
+                            #     print(f"supf mean var:{supf.mean().item()},{supf.var().item()}")
+                            #     print(f"subf max and min:",subf.max().item(),subf.min().item())
+                            #     print(f"supf max and min:",supf.max().item(),supf.min().item())
+                    if ib: break
+                f.append(sum_sim.data.cpu().numpy())
+                # f+=sum_sim.data.cpu().numpy()
+                # features_dict.clear()
+                del features_dict
+            # print("Info: ",len(f))
+            # print("f: ",f)
+            # print("cv: ",cv)
+            return np.array([f]).T, np.array([cv]).T
+
+        upperbound=[]
+        for sp in space_list:
+            c_out=[]
+            for n in space2names[sp]:
+                supf=self.features_dict[n]
+                c_out.append(int(supf.size(1))) # N,C,H,W
+            c_out=list(set(c_out))
+            assert len(c_out)<= 1,f'group{sp} channels not same:{c_out}'
+            upperbound.append(c_out[0])
+        # MOD-start geatpy问题离散定义和求解部分
+        problem=ea.Problem(
+            name="search with cka",
+            M=1,
+            maxormins=[-1],
+            Dim= len(space2names),
+            varTypes=[1]*len(space2names),
+            lb=[1]*len(space2names),
+            ub=upperbound,
+            ubin=[0]*len(space2names),
+            evalVars=evalVars
+        )
+        solver=ea.soea_SGA_templet(
+            problem=problem,
+            population=ea.Population(Encoding='BG',NIND=self.candidate_pool_size),
+            MAXGEN=self.max_epoch,
+            logTras=1,
+            trappedValue=1e-6,
+            maxTrappedCount=5,
+        )
+        res=ea.optimize(
+            seed=self.rand_seed,
+            algorithm=solver,
+            verbose=True,
+            outputMsg=True,
+            drawing=0,
+            drawLog=False,
+            saveFlag=False,
+        )
+        self.logger.info(f"RESULTS are: {res}")
+        # self.logger.info(f"")
+        # MOD-end
+        file_dict=[]
+        # for i in range(optPop.Phen.shape[1]):
+        #     print(optPop.Phen[0, i], end='\t')
+        print("optPop:")
+        for i,(cka,Vs) in enumerate(zip(res['optPop'].ObjV, res['optPop'].Phen)):
+            print(i,"\tObjV: ", cka,"\tPhen: ", Vs)
+
+        # for i,(cka,Vs) in enumerate(zip(res['lastPop'].ObjV, res['lastPop'].Phen)):
+        #     print(i,"\tObjV: ", cka,"\tPhen: ", Vs)
+
+        for i,(cka,Vs) in enumerate(zip(res['optPop'].ObjV, res['optPop'].Phen)):
+            space2ratio={s:int(r) for s,r in zip(space_list,Vs)}
+            subnet_dict=pruner.sample_subnet_nonuni(space2ratio)
+            if remove_subdict is not None:
+                subnet_dict.update(remove_subdict)
+            pruner.set_subnet(subnet_dict)
+            flops=self.algorithm.get_subnet_flops()
+            rflops=self.algorithm.get_supnet_flops()
+            reduction_rate=(rflops-flops)/rflops
+            # if is tensor, convert to list
+            if isinstance(cka,torch.Tensor):
+                cka=cka.tolist()
+            if isinstance(reduction_rate,torch.Tensor):
+                reduction_rate=reduction_rate.tolist()
+            if isinstance(flops,torch.Tensor):
+                flops=flops.tolist()
+            chls=pruner.export_subnet()
+            file_dict.append({
+                'channel_cfg':chls,
+                'space2ratio':space2ratio,
+                'cka':cka,
+                'reduction_rate':reduction_rate,
+                'flops':flops,
+            })
+        mmcv.dump(file_dict,os.path.join(self.work_dir,"opt.json") ,"json")
+
+
+    def test_search_discrete_inference_selfmutual(self,device='cuda:0'):
+        # MOD-start initial&log
+        """Execute the pipeline of evolution search."""
+        epoch_start = 0
+        if self.resume_from is not None:
+            searcher_resume = mmcv.fileio.load(self.resume_from)
+            for k in searcher_resume.keys():
+                setattr(self, k, searcher_resume[k])
+            epoch_start = int(searcher_resume['epoch'])
+            self.logger.info('#' * 100)
+            self.logger.info(f'Resume from epoch: {epoch_start}')
+            self.logger.info('#' * 100)
+        self.logger.info('Experiment setting:')
+        self.logger.info(f'candidate_pool_size: {self.candidate_pool_size}')
+        # self.logger.info(f'candidate_top_k: {self.candidate_top_k}')
+        # self.logger.info(f'num_crossover: {self.num_crossover}')
+        # self.logger.info(f'num_mutation: {self.num_mutation}')
+        # self.logger.info(f'mutate_prob: {self.mutate_prob}')
+        self.logger.info(f'max_epoch: {self.max_epoch}')
+        # self.logger.info(f'score_key: {self.score_key}')
+        # self.logger.info(f'constraints: {self.constraints}')
+        self.logger.info(f'reduction ratio: {self.reduction_ratio}')
+        self.logger.info('#' * 100)
+
+        # self.features_dict={}
+        remove_subdict=None
+        # remove_subdict=self.algorithm.pruner.remove_denoted_group(['downsample'])
+        # space2names,self.features_dict,_=self.extract_features(self.algorithm_for_test,self.dataloader)
+        supernet=self.algorithm.architecture
+        supernet_infer = MMDataParallel(
+            supernet.to(device), device_ids=[0])
+        
+        pruner=self.algorithm.pruner
+        space2names,self.features_dict,_=extract_features(supernet_infer, supernet,pruner,self.dataloader)
+
+        name2space={n:k for k,v in space2names.items() for n in v}
+        space_list=list(space2names.keys())
+        # MOD-end
+        # MOD-start evalVars
+        def evalVars(Vars):
+            f,cv=[],[]
+            for Vs in Vars:
+                # 计算FLOPS
+                space2ratio={}
+                for s,cn in zip(space_list,Vs):
+                    n=space2names[s][0]
+                    # space2ratio[s]=cn/self.features_dict[n].size(1)+1e-6 #这里多加一个小数，为了数值稳定
+                    space2ratio[s]=int(cn)
+                sub_dict=pruner.sample_subnet_nonuni(space2ratio)
+                if remove_subdict is not None:
+                    sub_dict.update(remove_subdict)
+                pruner.set_subnet(sub_dict)
+                flops=self.algorithm.get_subnet_flops()
+                rflops=self.algorithm.get_supnet_flops()
+                reduction_rate=(rflops-flops)/rflops
+                cv.append(self.reduction_ratio- reduction_rate)
+
+                _, features_dict,_ =extract_features(supernet_infer,supernet,pruner,self.dataloader)
+                # 计算 sim cka
+                sum_sim=torch.DoubleTensor([0],device='cpu').to(device).squeeze()
+                assert len(Vs)==len(space_list)
+                for space,cout_num in zip(space_list,Vs):
+                    ib=False
+                    for n in space2names[space]:
+                        supf=self.features_dict[n]
+                        subf=features_dict[n]
+                        if supf.mean().item()==0 or subf.mean().item()==0:
+                            sum_sim=torch.DoubleTensor([0],device='cpu').to(device).squeeze()
+                            ib=True
+                            break
+                        else:
+                            supf=supf.view(supf.size(0),-1)
+                            subf=subf.view(subf.size(0),-1)
+                            sim=cka_t(gram_t(supf),gram_t(subf))
+                            sum_sim+=sim
+                            # if sim is nan,print infors about subf and supf
+                            # if torch.isnan(sim):
+                            #     print(f"sim is nan,subf:{subf.shape},supf:{supf.shape}")
+                            #     print(f"subf mean var:{subf.mean().item()},{subf.var().item()}")
+                            #     print(f"supf mean var:{supf.mean().item()},{supf.var().item()}")
+                            #     print(f"subf max and min:",subf.max().item(),subf.min().item())
+                            #     print(f"supf max and min:",supf.max().item(),supf.min().item())
+                    if ib: break
+                f.append(sum_sim.data.cpu().numpy())
+                # f+=sum_sim.data.cpu().numpy()
+                # features_dict.clear()
+                del features_dict
+            # print("Info: ",len(f))
+            # print("f: ",f)
+            # print("cv: ",cv)
+            return np.array([f]).T, np.array([cv]).T
+
+        upperbound=[]
+        for sp in space_list:
+            c_out=[]
+            for n in space2names[sp]:
+                supf=self.features_dict[n]
+                c_out.append(int(supf.size(1))) # N,C,H,W
+            c_out=list(set(c_out))
+            assert len(c_out)<= 1,f'group{sp} channels not same:{c_out}'
+            upperbound.append(c_out[0])
+        # MOD-start geatpy问题离散定义和求解部分
+        problem=ea.Problem(
+            name="search with cka",
+            M=1,
+            maxormins=[-1],
+            Dim= len(space2names),
+            varTypes=[1]*len(space2names),
+            lb=[1]*len(space2names),
+            ub=upperbound,
+            ubin=[0]*len(space2names),
+            evalVars=evalVars
+        )
+        solver=ea.soea_SGA_templet(
+            problem=problem,
+            population=ea.Population(Encoding='BG',NIND=self.candidate_pool_size),
+            MAXGEN=self.max_epoch,
+            logTras=1,
+            trappedValue=1e-6,
+            maxTrappedCount=5,
+        )
+        res=ea.optimize(
+            seed=self.rand_seed,
+            algorithm=solver,
+            verbose=True,
+            outputMsg=True,
+            drawing=0,
+            drawLog=False,
+            saveFlag=False,
+        )
+        self.logger.info(f"RESULTS are: {res}")
+        # self.logger.info(f"")
+        # MOD-end
+        file_dict=[]
+        # for i in range(optPop.Phen.shape[1]):
+        #     print(optPop.Phen[0, i], end='\t')
+        print("optPop:")
+        for i,(cka,Vs) in enumerate(zip(res['optPop'].ObjV, res['optPop'].Phen)):
+            print(i,"\tObjV: ", cka,"\tPhen: ", Vs)
+
+        # for i,(cka,Vs) in enumerate(zip(res['lastPop'].ObjV, res['lastPop'].Phen)):
+        #     print(i,"\tObjV: ", cka,"\tPhen: ", Vs)
+
+        for i,(cka,Vs) in enumerate(zip(res['optPop'].ObjV, res['optPop'].Phen)):
+            space2ratio={s:int(r) for s,r in zip(space_list,Vs)}
+            subnet_dict=pruner.sample_subnet_nonuni(space2ratio)
+            if remove_subdict is not None:
+                subnet_dict.update(remove_subdict)
+            pruner.set_subnet(subnet_dict)
+            flops=self.algorithm.get_subnet_flops()
+            rflops=self.algorithm.get_supnet_flops()
+            reduction_rate=(rflops-flops)/rflops
+            # if is tensor, convert to list
+            if isinstance(cka,torch.Tensor):
+                cka=cka.tolist()
+            if isinstance(reduction_rate,torch.Tensor):
+                reduction_rate=reduction_rate.tolist()
+            if isinstance(flops,torch.Tensor):
+                flops=flops.tolist()
+            chls=pruner.export_subnet()
+            file_dict.append({
+                'channel_cfg':chls,
+                'space2ratio':space2ratio,
+                'cka':cka,
+                'reduction_rate':reduction_rate,
+                'flops':flops,
+            })
+        mmcv.dump(file_dict,os.path.join(self.work_dir,"opt.json") ,"json")
+
+    def test_from_json_channel_num_shift(self,device='cuda:0'):
+        '''
+            Test the numerical sensitivity of cka according to the number of channels
+        '''
+        import csv
+        import copy
+        import time
+        # MOD-start initial&log
+        """Execute the pipeline of evolution search."""
+        # self.features_dict={}
+        remove_subdict=None
+        # remove_subdict=self.algorithm.pruner.remove_denoted_group(['downsample'])
+        # space2names,self.features_dict,_=self.extract_features(self.algorithm_for_test,self.dataloader)
+        supernet=self.algorithm.architecture
+        supernet_infer = MMDataParallel(
+            supernet.to(device), device_ids=[0])
+        
+        pruner=self.algorithm.pruner
+        space2names,self.features_dict,_=extract_features(supernet_infer, supernet,pruner,self.dataloader)
+
+        name2space={n:k for k,v in space2names.items() for n in v}
+        space_list=list(space2names.keys())
+        # MOD-end
+        # MOD-start evalVars
+        total_sup_time_cost=[]
+        total_sub_time_cost=[]
+        total_cka_time_cost=[]
+        def evalVars(Vars,idx=0):
+            scka=torch.zeros((1),device=device)
+            f,cv=[],[]
+            for Vs in Vars:
+                # 计算FLOPS
+                sup_time_cost=[]
+                sub_time_cost=[]
+                cka_time_cost=[]
+                space2ratio={}
+                for s,cn in zip(space_list,Vs):
+                    n=space2names[s][0]
+                    # space2ratio[s]=cn/self.features_dict[n].size(1)+1e-6 #这里多加一个小数，为了数值稳定
+                    space2ratio[s]=int(cn)
+                sub_dict=pruner.sample_subnet_nonuni(space2ratio)
+                if remove_subdict is not None:
+                    sub_dict.update(remove_subdict)
+                pruner.set_subnet(sub_dict)
+                flops=self.algorithm.get_subnet_flops()
+                rflops=self.algorithm.get_supnet_flops()
+                reduction_rate=(rflops-flops)/rflops
+                cv.append(self.reduction_ratio- reduction_rate)
+
+                _, features_dict,_ =extract_features(supernet_infer,supernet,pruner,self.dataloader)
+                # 计算 sim cka
+                sum_sim=torch.DoubleTensor([0],device='cpu').to(device).squeeze()
+                assert len(Vs)==len(space_list)
+                for i,(space,cout_num) in enumerate( zip(space_list,Vs)):
+                    ib=False
+                    for n in space2names[space]:
+                        supf=self.features_dict[n]
+                        subf=features_dict[n]
+                        if supf.mean().item()==0 or subf.mean().item()==0:
+                            sum_sim=torch.DoubleTensor([0],device='cpu').to(device).squeeze()
+                            ib=True
+                            break
+                        else:
+                            supf=supf.view(supf.size(0),-1)
+                            subf=subf.view(subf.size(0),-1)
+                            
+                            begin=time.time()
+                            sup_gram=gram_t(supf)
+                            cost=time.time()-begin
+                            sup_time_cost.append(cost)
+                            
+                            begin=time.time()
+                            sub_gram=gram_t(subf)
+                            cost=time.time()-begin
+                            sub_time_cost.append(cost)
+                            
+                            begin=time.time()
+                            sim=cka_t(sup_gram,sub_gram)
+                            cost=time.time()-begin
+                            cka_time_cost.append(cost)
+                            
+                            sum_sim+=sim
+                            if i==idx:
+                                scka+=sim
+                            # if sim is nan,print infors about subf and supf
+                            # if torch.isnan(sim):
+                            #     print(f"sim is nan,subf:{subf.shape},supf:{supf.shape}")
+                            #     print(f"subf mean var:{subf.mean().item()},{subf.var().item()}")
+                            #     print(f"supf mean var:{supf.mean().item()},{supf.var().item()}")
+                            #     print(f"subf max and min:",subf.max().item(),subf.min().item())
+                            #     print(f"supf max and min:",supf.max().item(),supf.min().item())
+                    if ib: break
+                f.append(sum_sim.data.cpu().numpy())
+                # f+=sum_sim.data.cpu().numpy()
+                # features_dict.clear()
+                del features_dict
+                total_sup_time_cost.append(sup_time_cost)
+                total_sub_time_cost.append(sub_time_cost)
+                total_cka_time_cost.append(cka_time_cost)
+            # print("Info: ",len(f))
+            # print("f: ",f)
+            # print("cv: ",cv)
+            return np.array(f),np.array(scka.data.cpu().numpy()/len(space2names[space_list[idx]]))
+            # return np.array([f]).T, np.array([cv]).T
+
+        upperbound=[]
+        for sp in space_list:
+            c_out=[]
+            for n in space2names[sp]:
+                supf=self.features_dict[n]
+                c_out.append(int(supf.size(1))) # N,C,H,W
+            c_out=list(set(c_out))
+            assert len(c_out)<= 1,f'group{sp} channels not same:{c_out}'
+            upperbound.append(c_out[0])
+        self_csvwriter = csv.writer(open(os.path.join(self.work_dir,'self.csv'), 'w', newline=''))
+        totl_csvwriter = csv.writer(open(os.path.join(self.work_dir,'total.csv'), 'w', newline=''))
+        self_csvwriter.writerow(['Group', 'Channels', 'Ratio'])
+        totl_csvwriter.writerow(['Group', 'Channels', 'Ratio'])
+        for index in range(len(space2names)):
+            self_row=[space_list[index],upperbound[index]]
+            totl_row=[space_list[index],upperbound[index]]
+            indvidual=copy.deepcopy(upperbound)
+            for cn in range(1,upperbound[index]+1):
+                indvidual[index]=cn
+                f,s=evalVars([indvidual],index)
+                cka=f.squeeze()
+                scc=s.squeeze()
+                self_row.append(scc)
+                totl_row.append(cka)
+            self_csvwriter.writerow(self_row)
+            totl_csvwriter.writerow(totl_row)
+            snum=np.array(self_row[2:])
+            tnum=np.array(totl_row[2:])
+            # print(f"Statics{index}/{len(space2names)}: {space_list[index]}: {upperbound[index]}: SELF LAYER mean {snum.mean()}: std {snum.std()}: mean{tnum.mean()}: TOTAL MODEL std {tnum.std()}")
+            # print number with 4 decimal places
+            print(f"Statics{index}/{len(space2names)}: {space_list[index]}: {upperbound[index]}: SELF LAYER mean {snum.mean():.4f}: std {snum.std():.4f}: TOTAL MODEL mean {tnum.mean():.4f}: std {tnum.std():.4f}")
+
+        total_cka_time_cost=np.array(total_cka_time_cost).mean(axis=0)
+        total_sub_time_cost=np.array(total_sub_time_cost).mean(axis=0)
+        total_sup_time_cost=np.array(total_sup_time_cost).mean(axis=0)
+        print(f"Total time cost: sup {total_sup_time_cost}")
+        print(f"Total time cost: sub {total_sub_time_cost}")
+        print(f"Total time cost: cka {total_cka_time_cost}")
+        # # MOD-end evalVars
+        # self_csvwriter.close()
+        # totl_csvwriter.close()
+
+    def test_from_json_channel_num_shift_fix_group_050(self,device='cuda:0'):
+        '''
+            Test the numerical sensitivity of cka according to the number of channels
+        '''
+        import csv
+        import copy
+        # MOD-start initial&log
+        """Execute the pipeline of evolution search."""
+        # self.features_dict={}
+        remove_subdict=None
+        # remove_subdict=self.algorithm.pruner.remove_denoted_group(['downsample'])
+        # space2names,self.features_dict,_=self.extract_features(self.algorithm_for_test,self.dataloader)
+        supernet=self.algorithm.architecture
+        supernet_infer = MMDataParallel(
+            supernet.to(device), device_ids=[0])
+        
+        pruner=self.algorithm.pruner
+        space2names,self.features_dict,_=extract_features(supernet_infer, supernet,pruner,self.dataloader)
+
+        name2space={n:k for k,v in space2names.items() for n in v}
+        space_list=list(space2names.keys())
+        # MOD-end
+        # MOD-start evalVars
+        def evalVars(Vars,idx=0):
+            scka=torch.zeros((1),device=device)
+            f,cv=[],[]
+            for Vs in Vars:
+                # 计算FLOPS
+                space2ratio={}
+                for s,cn in zip(space_list,Vs):
+                    n=space2names[s][0]
+                    # space2ratio[s]=cn/self.features_dict[n].size(1)+1e-6 #这里多加一个小数，为了数值稳定
+                    space2ratio[s]=int(cn)
+                sub_dict=pruner.sample_subnet_nonuni(space2ratio)
+                if remove_subdict is not None:
+                    sub_dict.update(remove_subdict)
+                pruner.set_subnet(sub_dict)
+                flops=self.algorithm.get_subnet_flops()
+                rflops=self.algorithm.get_supnet_flops()
+                reduction_rate=(rflops-flops)/rflops
+                cv.append(self.reduction_ratio- reduction_rate)
+
+                _, features_dict,_ =extract_features(supernet_infer,supernet,pruner,self.dataloader)
+                # 计算 sim cka
+                sum_sim=torch.DoubleTensor([0],device='cpu').to(device).squeeze()
+                assert len(Vs)==len(space_list)
+                for i,(space,cout_num) in enumerate( zip(space_list,Vs)):
+                    ib=False
+                    for n in space2names[space]:
+                        supf=self.features_dict[n]
+                        subf=features_dict[n]
+                        if supf.mean().item()==0 or subf.mean().item()==0:
+                            sum_sim=torch.DoubleTensor([0],device='cpu').to(device).squeeze()
+                            ib=True
+                            break
+                        else:
+                            supf=supf.view(supf.size(0),-1)
+                            subf=subf.view(subf.size(0),-1)
+                            sim=cka_t(gram_t(supf),gram_t(subf))
+                            sum_sim+=sim
+                            if i==idx:
+                                scka+=sim
+                            # if sim is nan,print infors about subf and supf
+                            # if torch.isnan(sim):
+                            #     print(f"sim is nan,subf:{subf.shape},supf:{supf.shape}")
+                            #     print(f"subf mean var:{subf.mean().item()},{subf.var().item()}")
+                            #     print(f"supf mean var:{supf.mean().item()},{supf.var().item()}")
+                            #     print(f"subf max and min:",subf.max().item(),subf.min().item())
+                            #     print(f"supf max and min:",supf.max().item(),supf.min().item())
+                    if ib: break
+                f.append(sum_sim.data.cpu().numpy())
+                # f+=sum_sim.data.cpu().numpy()
+                # features_dict.clear()
+                del features_dict
+            # print("Info: ",len(f))
+            # print("f: ",f)
+            # print("cv: ",cv)
+            return np.array(f),np.array(scka.data.cpu().numpy()/len(space2names[space_list[idx]]))
+            # return np.array([f]).T, np.array([cv]).T
+
+        upperbound=[]
+        for sp in space_list:
+            c_out=[]
+            for n in space2names[sp]:
+                supf=self.features_dict[n]
+                c_out.append(int(supf.size(1))) # N,C,H,W
+            c_out=list(set(c_out))
+            assert len(c_out)<= 1,f'group{sp} channels not same:{c_out}'
+            if 'group' in sp:
+                upperbound.append(int(c_out[0]*0.5))
+            else:
+                upperbound.append(c_out[0])
+        self_csvwriter = csv.writer(open(os.path.join(self.work_dir,'self.csv'), 'w', newline=''))
+        totl_csvwriter = csv.writer(open(os.path.join(self.work_dir,'total.csv'), 'w', newline=''))
+        self_csvwriter.writerow(['Group', 'Channels', 'Ratio'])
+        totl_csvwriter.writerow(['Group', 'Channels', 'Ratio'])            
+        for index in range(len(space2names)):
+            if 'group' in space_list[index]: continue
+            self_row=[space_list[index],upperbound[index]]
+            totl_row=[space_list[index],upperbound[index]]
+            indvidual=copy.deepcopy(upperbound)
+            for cn in range(1,upperbound[index]+1):
+                indvidual[index]=cn
+                f,s=evalVars([indvidual],index)
+                cka=f.squeeze()
+                scc=s.squeeze()
+                self_row.append(scc)
+                totl_row.append(cka)
+            self_csvwriter.writerow(self_row)
+            totl_csvwriter.writerow(totl_row)
+            snum=np.array(self_row[2:])
+            tnum=np.array(totl_row[2:])
+            # print(f"Statics{index}/{len(space2names)}: {space_list[index]}: {upperbound[index]}: SELF LAYER mean {snum.mean()}: std {snum.std()}: mean{tnum.mean()}: TOTAL MODEL std {tnum.std()}")
+            # print number with 4 decimal places
+            print(f"Statics{index}/{len(space2names)}: {space_list[index]}: {upperbound[index]}: SELF LAYER mean {snum.mean():.4f}: std {snum.std():.4f}: TOTAL MODEL mean {tnum.mean():.4f}: std {tnum.std():.4f}")
+
+        # # MOD-end evalVars
+        # self_csvwriter.close()
+        # totl_csvwriter.close()
+
+
+    def test_search_geatpy_discrete_inference_sample_subnet(self,device='cuda:0'):
+        # MOD-start initial&log
+        """Execute the pipeline of evolution search."""
+        epoch_start = 0
+        if self.resume_from is not None:
+            searcher_resume = mmcv.fileio.load(self.resume_from)
+            for k in searcher_resume.keys():
+                setattr(self, k, searcher_resume[k])
+            epoch_start = int(searcher_resume['epoch'])
+            self.logger.info('#' * 100)
+            self.logger.info(f'Resume from epoch: {epoch_start}')
+            self.logger.info('#' * 100)
+        self.logger.info('Experiment setting:')
+        self.logger.info(f'candidate_pool_size: {self.candidate_pool_size}')
+        # self.logger.info(f'candidate_top_k: {self.candidate_top_k}')
+        # self.logger.info(f'num_crossover: {self.num_crossover}')
+        # self.logger.info(f'num_mutation: {self.num_mutation}')
+        # self.logger.info(f'mutate_prob: {self.mutate_prob}')
+        self.logger.info(f'max_epoch: {self.max_epoch}')
+        # self.logger.info(f'score_key: {self.score_key}')
+        # self.logger.info(f'constraints: {self.constraints}')
+        self.logger.info(f'reduction ratio: {self.reduction_ratio}')
+        self.logger.info('#' * 100)
+
+        # self.features_dict={}
+        remove_subdict=None
+        # remove_subdict=self.algorithm.pruner.remove_denoted_group(['downsample'])
+        # space2names,self.features_dict,_=self.extract_features(self.algorithm_for_test,self.dataloader)
+        supernet=self.algorithm.architecture
+        supernet_infer = MMDataParallel(
+            supernet.to(device), device_ids=[0])
+        
+        pruner=self.algorithm.pruner
+        space2names,self.features_dict,_=extract_features(supernet_infer, supernet,pruner,self.dataloader)
+
+        name2space={n:k for k,v in space2names.items() for n in v}
+        space_list=list(space2names.keys())
+        # MOD-end
+        # MOD-start evalVars
+        def evalVars(Vars):
+            f,cv=[],[]
+            for Vs in Vars:
+                # 计算FLOPS
+                space2ratio={}
+                for s,cn in zip(space_list,Vs):
+                    n=space2names[s][0]
+                    # space2ratio[s]=cn/self.features_dict[n].size(1)+1e-6 #这里多加一个小数，为了数值稳定
+                    space2ratio[s]=int(cn)
+                sub_dict=pruner.sample_subnet_nonuni(space2ratio)
+                if remove_subdict is not None:
+                    sub_dict.update(remove_subdict)
+                pruner.set_subnet(sub_dict)
+                flops=self.algorithm.get_subnet_flops()
+                rflops=self.algorithm.get_supnet_flops()
+                reduction_rate=(rflops-flops)/rflops
+                cv.append(self.reduction_ratio- reduction_rate)
+
+                _, features_dict,_ =extract_features(supernet_infer,supernet,pruner,self.dataloader)
+                # 计算 sim cka
+                sum_sim=torch.DoubleTensor([0],device='cpu').to(device).squeeze()
+                assert len(Vs)==len(space_list)
+                for space,cout_num in zip(space_list,Vs):
+                    ib=False
+                    for n in space2names[space]:
+                        supf=self.features_dict[n]
+                        subf=features_dict[n]
+                        if supf.mean().item()==0 or subf.mean().item()==0:
+                            sum_sim=torch.DoubleTensor([0],device='cpu').to(device).squeeze()
+                            ib=True
+                            break
+                        else:
+                            supf=supf.view(supf.size(0),-1)
+                            subf=subf.view(subf.size(0),-1)
+                            sim=cka_t(gram_t(supf),gram_t(subf))
+                            sum_sim+=sim
+                            # if sim is nan,print infors about subf and supf
+                            # if torch.isnan(sim):
+                            #     print(f"sim is nan,subf:{subf.shape},supf:{supf.shape}")
+                            #     print(f"subf mean var:{subf.mean().item()},{subf.var().item()}")
+                            #     print(f"supf mean var:{supf.mean().item()},{supf.var().item()}")
+                            #     print(f"subf max and min:",subf.max().item(),subf.min().item())
+                            #     print(f"supf max and min:",supf.max().item(),supf.min().item())
+                    if ib: break
+                f.append(sum_sim.data.cpu().numpy())
+                # f+=sum_sim.data.cpu().numpy()
+                # features_dict.clear()
+                del features_dict
+            # print("Info: ",len(f))
+            # print("f: ",f)
+            # print("cv: ",cv)
+            return np.array([f]).T, np.array([cv]).T
+
+        upperbound=[]
+        for sp in space_list:
+            c_out=[]
+            for n in space2names[sp]:
+                supf=self.features_dict[n]
+                c_out.append(int(supf.size(1))) # N,C,H,W
+            c_out=list(set(c_out))
+            assert len(c_out)<= 1,f'group{sp} channels not same:{c_out}'
+            upperbound.append(c_out[0])
+        # MOD-start geatpy问题离散定义和求解部分
+        problem=ea.Problem(
+            name="search with cka",
+            M=1,
+            maxormins=[-1],
+            Dim= len(space2names),
+            varTypes=[1]*len(space2names),
+            lb=[1]*len(space2names),
+            ub=upperbound,
+            ubin=[0]*len(space2names),
+            evalVars=evalVars
+        )
+        solver=ea.soea_SGA_templet(
+            problem=problem,
+            population=ea.Population(Encoding='BG',NIND=self.candidate_pool_size),
+            MAXGEN=self.max_epoch,
+            logTras=1,
+            trappedValue=1e-6,
+            maxTrappedCount=5,
+        )
+        res=ea.optimize(
+            seed=self.rand_seed,
+            algorithm=solver,
+            verbose=True,
+            outputMsg=True,
+            drawing=0,
+            drawLog=False,
+            saveFlag=False,
+        )
+        self.logger.info(f"RESULTS are: {res}")
+        # self.logger.info(f"")
+        # MOD-end
+        file_dict=[]
+        # for i in range(optPop.Phen.shape[1]):
+        #     print(optPop.Phen[0, i], end='\t')
+        print("optPop:")
+        for i,(cka,Vs) in enumerate(zip(res['optPop'].ObjV, res['optPop'].Phen)):
+            print(i,"\tObjV: ", cka,"\tPhen: ", Vs)
+
+        # for i,(cka,Vs) in enumerate(zip(res['lastPop'].ObjV, res['lastPop'].Phen)):
+        #     print(i,"\tObjV: ", cka,"\tPhen: ", Vs)
+
+        # for i,(cka,Vs) in enumerate(zip(res['optPop'].ObjV, res['optPop'].Phen)):
+        #     space2ratio={s:int(r) for s,r in zip(space_list,Vs)}
+        #     subnet_dict=pruner.sample_subnet_nonuni(space2ratio)
+        #     if remove_subdict is not None:
+        #         subnet_dict.update(remove_subdict)
+        #     pruner.set_subnet(subnet_dict)
+        #     flops=self.algorithm.get_subnet_flops()
+        #     rflops=self.algorithm.get_supnet_flops()
+        #     reduction_rate=(rflops-flops)/rflops
+        #     # if is tensor, convert to list
+        #     if isinstance(cka,torch.Tensor):
+        #         cka=cka.tolist()
+        #     if isinstance(reduction_rate,torch.Tensor):
+        #         reduction_rate=reduction_rate.tolist()
+        #     if isinstance(flops,torch.Tensor):
+        #         flops=flops.tolist()
+        #     chls=pruner.export_subnet()
+        #     file_dict.append({
+        #         'channel_cfg':chls,
+        #         'space2ratio':space2ratio,
+        #         'cka':cka,
+        #         'reduction_rate':reduction_rate,
+        #         'flops':flops,
+        #     })
+        # mmcv.dump(file_dict,os.path.join(self.work_dir,"opt.json") ,"json")
+
+        for i,(cka,Vs) in enumerate(zip(res['lastPop'].ObjV, res['lastPop'].Phen)):
+            print(i,"\tObjV: ", cka,"\tPhen: ", Vs)
+        for i,(cka,Vs) in enumerate(zip(res['lastPop'].ObjV, res['lastPop'].Phen)):
+            space2ratio={s:int(r) for s,r in zip(space_list,Vs)}
+            subnet_dict=pruner.sample_subnet_nonuni(space2ratio)
+            if remove_subdict is not None:
+                subnet_dict.update(remove_subdict)
+            pruner.set_subnet(subnet_dict)
+            chls=pruner.export_subnet()
+            file_dict.append({
+                'channel_cfg':chls,
+                'space2ratio':space2ratio,
+                'cka':cka,
+            })
+        mmcv.dump(file_dict,"./relavent.json","json")

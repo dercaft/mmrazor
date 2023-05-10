@@ -186,9 +186,12 @@ def main():
         assert args.model_index >=0
         ccfg=channel_cfgs[args.model_index]
         if isinstance(ccfg,dict) and ccfg.get("channel_cfg"):
-            cfg.algorithm.channel_cfg=ccfg["channel_cfg"]
+            # cfg.algorithm.channel_cfg=ccfg["channel_cfg"]
+            # getattr(cfg.algorithm,"channel_cfg",None).update(ccfg.get("channel_cfg",{}))
+            setattr(cfg.algorithm,"channel_cfg",ccfg.get("channel_cfg",{}))
         else:
-            cfg.algorithm.channel_cfg=ccfg
+            # cfg.algorithm.channel_cfg=ccfg
+            setattr(cfg.algorithm,"channel_cfg",ccfg)
         if isinstance(ccfg,dict) and ccfg.get("space2ratio"):
             space2ratio=ccfg["space2ratio"]
         cfg.algorithm.retraining=False
@@ -200,7 +203,7 @@ def main():
     if space2ratio:
         logger.info(f'Use space2ratio')
         algorithm.compress_space2ratio(space2ratio)
-    else:
+    elif hasattr(cfg.algorithm,'channel_cfg'):
         logger.info(f'Use channel_cfg')
         algorithm.compress_channel_cfg(cfg.algorithm.channel_cfg)
     # 需要实现一个从ccfg转换成subnet_dict样式的函数，因为deploy_subnet不管用

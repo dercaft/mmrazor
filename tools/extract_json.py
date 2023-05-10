@@ -6,6 +6,10 @@ import sys
 import json
 import csv
 # Use first argument as dir path
+
+if len(sys.argv) < 3:
+    print("Usage: python extract_json.py DIR_PATH PREFIX")
+    exit(0)
 DIR_PATH=sys.argv[1]
 PREFIX=sys.argv[2]
 # DIR_PATH="/data/work_dirs/wyh/cifar10_sample"
@@ -27,6 +31,7 @@ for dir in dirs:
     rl=[]
     pc=[]
     rc=[]
+    total=0
     for n, cs in chacfg.items():
         # print("{n},\t{cs}".format(n=n,cs=cs))
         oc=cs["out_channels"]
@@ -35,8 +40,10 @@ for dir in dirs:
         rl.append(r)
         pc.append(oc)
         rc.append(roc)
+        total+=roc
     print(dir,":")
     print("r:\t",rl)
     print("pc:\t",pc)
     print("rc:\t",rc)
+    print("total:\t",total)
     # write into csv
